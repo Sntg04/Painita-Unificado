@@ -423,6 +423,18 @@ export async function recentFormularios(limit = 20) {
   return rows;
 }
 
+// Listar usuarios (staff) para Admin
+export async function listUsuarios(limit = 50) {
+  const lim = Math.max(1, Math.min(200, Number(limit)||50));
+  if (!usePg) {
+    const db = readFileDB();
+    const arr = (db.usuarios || []).slice().sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+    return arr.slice(0, lim).map(u => ({ id: u.id, email: u.email, role: u.role || 'agent', created_at: u.created_at }));
+  }
+  const { rows } = await pool.query('select id, email, role, created_at from usuarios order by id desc limit $1', [lim]);
+  return rows;
+}
+
 // Cliente helpers
 export async function getClienteByPhone(phone) {
   if (!usePg) {

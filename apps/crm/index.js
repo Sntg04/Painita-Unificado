@@ -5,7 +5,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { calcularValorPrestamo } from '@painita/calc';
-import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin } from './db.js';
+import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin, listUsuarios } from './db.js';
 import crypto from 'crypto';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -210,12 +210,13 @@ app.get('/__up', (req, res) => res.json({ ok: true }));
 // Admin data for quick inspection
 app.get('/admin/data', requireAdmin, async (req, res) => {
   try {
-    const [counts, clientes, forms] = await Promise.all([
+    const [counts, clientes, forms, usuarios] = await Promise.all([
       getCounts(),
       recentClientes(50),
-      recentFormularios(50)
+      recentFormularios(50),
+      listUsuarios(50)
     ]);
-    res.json({ ok:true, counts, clientes, formularios: forms });
+    res.json({ ok:true, counts, clientes, formularios: forms, usuarios });
   } catch (e) { res.status(500).json({ ok:false, error: 'admin_data_failed' }); }
 });
 
