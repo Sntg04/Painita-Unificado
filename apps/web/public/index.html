@@ -478,24 +478,18 @@
         // Desglose con el mismo componente visual del home
         const breakdown = BreakdownPanel({ desglose: desg });
         const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
-        // Estado de aceptación
-        const acceptState = document.createElement('p');
-        acceptState.style.marginTop = '8px';
-        acceptState.style.color = '#444';
-        acceptState.textContent = `Cliente aceptó: ${String(f.cliente_acepto||'en espera')}`;
         // Botón al final
         const acceptBtn = document.createElement('button'); acceptBtn.className = 'btn btn-primary'; acceptBtn.textContent = 'Aceptar préstamo';
         acceptBtn.style.marginTop = '12px'; acceptBtn.style.width = '100%';
-        acceptBtn.addEventListener('click', async () => {
+  acceptBtn.addEventListener('click', async () => {
           acceptBtn.disabled = true;
           try {
             const r = await fetch(`${API}/form/${state.formId}/accept`, { method: 'PATCH' });
             // Aceptación persistida (ignoramos respuesta exacta)
-            acceptState.textContent = 'Cliente aceptó: si';
             alert('de 5-10 minutos tendras el dinero en tu cuenta gracias por elegir painita');
           } catch {}
         });
-        card.append(h, summary, breakdown, dueP, acceptState, acceptBtn);
+  card.append(h, summary, breakdown, dueP, acceptBtn);
         const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
       }
 

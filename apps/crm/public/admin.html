@@ -123,7 +123,7 @@
           <input class="input" id="f_pass" placeholder="Contraseña (si crea cliente)" type="password" />
           <button class="btn primary" id="f_create">Crear</button>
         </div>
-        <table id="tForms"><thead><tr><th>ID</th><th>Nombre</th><th>Número</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+  <table id="tForms"><thead><tr><th>ID</th><th>Nombre</th><th>Número</th><th>Estado</th><th>Cliente aceptó</th><th>Acciones</th></tr></thead><tbody></tbody></table>
         <dialog id="formModal" style="border:0; border-radius:12px; width:min(900px, 96vw);">
           <div style="padding:16px; max-height:80vh; overflow:auto;">
             <h3 id="fm_title" style="margin-top:0;">Formulario</h3>
@@ -201,6 +201,7 @@
           <td>${fullName(x)}</td>
           <td>${x.celular||''}</td>
           <td><select class="input f_estado" data-id="${x.id}">${options}</select></td>
+          <td>${x.cliente_acepto || 'en espera'}</td>
           <td><button class="btn" data-action="viewf" data-id="${x.id}">Ver más</button></td>`;
         tb.appendChild(tr);
       });
@@ -322,6 +323,7 @@
               field('Plazo', x.plazo, 'plazo'),
               field('Paso actual', x.paso_actual, 'paso_actual'),
               selectField('Estado', estadoVal, 'estado', ['pendiente','en_espera','aprobado','negado']),
+              selectField('Cliente aceptó', (x.cliente_acepto||'en espera'), 'cliente_acepto', ['en espera','si']),
               field('Primer nombre', x.first_name, 'first_name'),
               field('Segundo nombre', x.second_name, 'second_name'),
               field('Primer apellido', x.last_name, 'last_name'),

@@ -509,12 +509,12 @@ export async function recentFormularios(limit = 20) {
     const arr = [];
     for (const s of db.solicitudes) {
       const f = s.step_data?.formulario;
-      if (f) arr.push({ id: f.id, celular: f.celular, monto: f.monto ?? null, plazo: f.plazo ?? null, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at, first_name: f.first_name || '', second_name: f.second_name || '', last_name: f.last_name || '', second_last_name: f.second_last_name || '' });
+    if (f) arr.push({ id: f.id, celular: f.celular, monto: f.monto ?? null, plazo: f.plazo ?? null, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', cliente_acepto: f.cliente_acepto || null, created_at: s.created_at, first_name: f.first_name || '', second_name: f.second_name || '', last_name: f.last_name || '', second_last_name: f.second_last_name || '' });
     }
     arr.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
     return arr.slice(0, lim);
   }
-  const { rows } = await pool.query('select id, celular, monto, plazo, paso_actual, estado, created_at, first_name, second_name, last_name, second_last_name from formularios order by id desc limit $1', [lim]);
+  const { rows } = await pool.query('select id, celular, monto, plazo, paso_actual, estado, cliente_acepto, created_at, first_name, second_name, last_name, second_last_name from formularios order by id desc limit $1', [lim]);
   return rows;
 }
 
