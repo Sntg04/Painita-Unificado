@@ -31,11 +31,12 @@
   import { FormStep6 } from './js/components/FormStep6.js';
   import { FormStep7 } from './js/components/FormStep7.js';
   import { ensureDataLoaded, getCiudades, isReady as colombiaReady } from './js/utils/colombiaData.js';
+  import { calcularDesglose } from './js/utils/finanzas.js';
 
     const state = {
       monto: 300000,
       plazo: 30,
-  fase: 'calculadora', // 'calculadora' | 'celular' | 'password' | 'form' | 'final'
+  fase: 'calculadora', // 'calculadora' | 'celular' | 'password' | 'form' | 'final' | 'aprobado'
       celular: '',
       otp: '',
   password: '',
@@ -94,6 +95,10 @@
       const r = await fetch(API + '/form/' + state.formId);
       const d = await r.json();
       state.formData = d;
+      if (String(d?.estado||'').toLowerCase() === 'aprobado') {
+        state.fase = 'aprobado';
+        return d;
+      }
       if (typeof d?.paso_actual === 'number') {
         state.formStep = Math.min(7, Math.max(1, Number(d.paso_actual)));
         try {
@@ -146,8 +151,13 @@
               state.formId = form.id;
               state.formData = form;
               const paso = Number(form.paso_actual || 1);
-              state.formStep = Math.min(7, Math.max(1, paso));
-              state.fase = 'form';
+              // Si está aprobado, ir a resumen de aprobado
+              if (String(form.estado||'').toLowerCase() === 'aprobado') {
+                state.fase = 'aprobado';
+              } else {
+                state.formStep = Math.min(7, Math.max(1, paso));
+                state.fase = 'form';
+              }
               render();
             } else {
               // No hay formulario, continuar con contraseña para crear uno
@@ -438,6 +448,28 @@
         const p2 = document.createElement('p'); p2.textContent = 'En un lapso de 10 a 30 minutos puedes volver y conocer tu preaprobado.';
         const hint = document.createElement('p'); hint.style.color = '#666'; hint.style.fontSize = '0.95rem'; hint.textContent = 'Puedes cerrar esta ventana y regresar más tarde.';
         card.append(h, p1, p2, hint);
+        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+      } else if (state.fase === 'aprobado') {
+        const card = document.createElement('div'); card.className='card card-center';
+        const h = document.createElement('h3'); h.className='card__title'; h.textContent = 'Tu préstamo ha sido aprobado';
+        const f = state.formData || {};
+        const monto = Number(f.monto||0);
+        const plazo = Number(f.plazo||0);
+        const desg = calcularDesglose(monto, plazo);
+        // Calcular fecha de pago sumando días al hoy
+        const due = new Date(); due.setDate(due.getDate() + (plazo||0));
+        const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+        const p1 = document.createElement('p'); p1.textContent = `Monto aprobado: ${desg.monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const ul = document.createElement('ul'); ul.style.lineHeight = '1.6';
+        const li1 = document.createElement('li'); li1.textContent = `Interés: ${desg.interesEA.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const li2 = document.createElement('li'); li2.textContent = `Seguro: ${desg.seguro.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const li3 = document.createElement('li'); li3.textContent = `Fianza (c/IVA): ${desg.fianza.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const li4 = document.createElement('li'); li4.textContent = `Administración: ${desg.administracion.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const li5 = document.createElement('li'); li5.textContent = `IVA administración: ${desg.ivaAdministracion.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const total = document.createElement('p'); total.style.fontWeight='800'; total.textContent = `Total a pagar: ${desg.totalPagar.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
+        ul.append(li1, li2, li3, li4, li5);
+        card.append(h, p1, ul, total, dueP);
         const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
       }
 

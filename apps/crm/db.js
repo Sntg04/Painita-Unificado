@@ -528,9 +528,9 @@ export async function getLatestFormularioForPhone(phone) {
     const s = db.solicitudes.find(x => x.phone === phone);
     if (!s) return null;
     const f = s.step_data?.formulario || null;
-    return f ? { id: f.id, celular: f.celular, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at } : null;
+    return f ? { id: f.id, celular: f.celular, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at, monto: f.monto ?? null, plazo: f.plazo ?? null } : null;
   }
-  const q = `select f.id, f.celular, f.paso_actual, f.estado, f.created_at
+  const q = `select f.id, f.celular, f.paso_actual, f.estado, f.created_at, f.monto, f.plazo
              from formularios f join clientes c on f.cliente_id=c.id
              where c.phone=$1 order by f.id desc limit 1`;
   const { rows } = await pool.query(q, [phone]);
