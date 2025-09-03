@@ -104,6 +104,18 @@ export async function init() {
     create index if not exists idx_usuarios_email on usuarios(email);
   `);
 
+  // Ensure image columns are wide enough (text) for base64/data URLs
+  try {
+    await pool.query(`
+      alter table if exists formularios
+        alter column id_front type text,
+        alter column id_back type text,
+        alter column selfie type text;
+    `);
+  } catch (e) {
+    console.warn('[crm] alter image columns skipped:', e?.message || e);
+  }
+
   // Seed admin opcional via variables de entorno
   try {
     const adminEmail = process.env.ADMIN_EMAIL;

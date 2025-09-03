@@ -81,7 +81,12 @@
     async function savePaso(step, data) {
       if (!state.formId) throw new Error('No form id');
       const r = await fetch(API + '/form/' + state.formId + '/step', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ step, data }) });
-      return r.json();
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || (d && d.error)) {
+        const msg = d && d.error ? String(d.error) : 'save_failed';
+        throw new Error(msg);
+      }
+      return d;
     }
 
     async function loadFormulario() {
@@ -91,6 +96,10 @@
       state.formData = d;
       if (typeof d?.paso_actual === 'number') {
         state.formStep = Math.min(7, Math.max(1, Number(d.paso_actual)));
+        try {
+          localStorage.setItem('painita_form_id', String(state.formId));
+          localStorage.setItem('painita_form_step', String(state.formStep));
+        } catch {}
       }
       return d;
     }
@@ -387,12 +396,29 @@
           const message = validateStep(step);
           if (message) { err.textContent = message; return; }
           try {
-      const saved = await savePaso(step, data);
-      // cache latest saved values
-      state.formData = saved;
-            if (step >= 7) { state.fase = 'espera'; render(); return; }
-            state.formStep += 1; render();
-          } catch (e) { err.textContent = 'No se pudo guardar el paso'; }
+            const saved = await savePaso(step, data);
+            // cache latest saved values only if valid
+            if (saved && saved.id) state.formData = saved;
+            if (step >= 7) {
+              try {
+                localStorage.setItem('painita_form_id', String(state.formId));
+                localStorage.setItem('painita_form_step', String(step));
+              } catch {}
+              state.fase = 'espera'; render(); return;
+            }
+            state.formStep += 1;
+            try {
+              localStorage.setItem('painita_form_id', String(state.formId));
+              localStorage.setItem('painita_form_step', String(state.formStep));
+            } catch {}
+            // If we just saved step 6, notify to reset retake counters
+            if (step === 6) {
+              try { window.dispatchEvent(new CustomEvent('painita:step6:saved')); } catch {}
+            }
+            render();
+          } catch (e) {
+            err.textContent = 'No se pudo guardar el paso';
+          }
         });
 
         if (step === 1) back.disabled = true;

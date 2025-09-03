@@ -131,7 +131,7 @@ export function FormStep6() {
     // Refresca preview si ya viene con datos (hidratación)
     setTimeout(() => { if (hidden.value) { preview.src = hidden.value; preview.style.display=''; } updateUI(); }, 0);
 
-    function updateUI() {
+  function updateUI() {
       const hasPhoto = !!hidden.value;
       preview.style.display = hasPhoto ? '' : 'none';
       // Mostrar controles chicos si hay foto; ocultar botones grandes
@@ -155,5 +155,12 @@ export function FormStep6() {
     createCaptureField('Documento (frontal)', 'id_front'),
     createCaptureField('Documento (trasera)', 'id_back'),
   );
+  // Listen for a global event to reset retake counters after a successful save
+  try {
+    window.addEventListener('painita:step6:saved', () => {
+      try { localStorage.removeItem('painita_id_retake_count_id_front'); } catch {}
+      try { localStorage.removeItem('painita_id_retake_count_id_back'); } catch {}
+    });
+  } catch {}
   return wrap;
 }
