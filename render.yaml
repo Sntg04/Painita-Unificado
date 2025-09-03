@@ -36,7 +36,9 @@ services:
       - key: ADMIN_JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false # optional; set to enable Postgres
+        fromDatabase:
+          name: painita-db
+          property: connectionString
 
   - type: web
     name: painita-api
@@ -54,3 +56,7 @@ services:
           type: web
           name: painita-crm
       property: hostport
+
+databases:
+  - name: painita-db
+    plan: free
