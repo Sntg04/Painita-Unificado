@@ -47,6 +47,17 @@
 
     const API = location.origin;
 
+    // Auto-resume from localStorage (when coming from /mi-solicitud login)
+    try {
+      const savedFormId = localStorage.getItem('painita_form_id');
+      const savedFormStep = localStorage.getItem('painita_form_step');
+      if (savedFormId) {
+        state.formId = Number(savedFormId);
+        state.formStep = Math.min(7, Math.max(1, parseInt(savedFormStep||'1',10) || 1));
+        state.fase = 'form';
+      }
+    } catch {}
+
     function savePrefs() {
       try { localStorage.setItem('painita_plazo', String(state.plazo)); localStorage.setItem('painita_monto', String(state.monto)); } catch {}
     }
@@ -78,6 +89,9 @@
       const r = await fetch(API + '/form/' + state.formId);
       const d = await r.json();
       state.formData = d;
+      if (typeof d?.paso_actual === 'number') {
+        state.formStep = Math.min(7, Math.max(1, Number(d.paso_actual)));
+      }
       return d;
     }
 

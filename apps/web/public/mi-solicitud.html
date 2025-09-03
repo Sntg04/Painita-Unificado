@@ -22,41 +22,75 @@
   <div style="margin:12px 0;">
     <button id="createDemo">Crear solicitud demo</button>
     <label style="margin-left:10px;">Set ID manual: <input id="setId" placeholder="e.g. 1" style="width:80px" /> <button id="saveId">Guardar</button></label>
-  </div>
-  <h3>Steps</h3>
-  <pre id="steps"></pre>
-  <div id="error" style="color:#b00;"></div>
-  <script>
-    const storageKey = 'painita_solicitud_id';
-    let id = localStorage.getItem(storageKey);
-    const API = location.origin;
-    const errEl = document.getElementById('error');
-    function setId(val){ id = String(val); localStorage.setItem(storageKey, id); document.getElementById('id').textContent = id; }
-    if (!id) { errEl.textContent = 'No hay solicitud activa. Crea una solicitud demo o ingresa un ID.'; }
-    async function load() {
-      if (!id) return;
-      try {
-        const r = await fetch(API + `/status/${id}`);
-        if (!r.ok) {
-          errEl.textContent = `Error ${r.status}: No se encontró la solicitud ${id}`;
-          return;
+  <!doctype html>
+  <html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Iniciar sesión</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root { --primary:#B00020; }
+      body { font-family: 'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; margin:0; background:#fff; color:#111; }
+      .center { min-height:100dvh; display:grid; place-items:center; padding:20px; }
+      .card { width:min(460px, 96vw); border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:20px; box-shadow: 0 6px 30px rgba(0,0,0,0.06); }
+      h1 { margin:0 0 6px 0; font-size:1.6rem; color:#111; }
+      p  { margin:0 0 14px 0; color:#444; }
+      .input { width:100%; padding:10px 12px; border:1px solid #d5d5d5; border-radius:10px; font-size:1rem; }
+      .btn { width:100%; padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:800; background:var(--primary); color:#fff; }
+      .error { color:#b00020; margin-top:10px; }
+      a { color: var(--primary); text-decoration: none; }
+    </style>
+    <script>
+      async function doLogin(){
+        const phone = (document.getElementById('phone').value||'').replace(/\D/g,'').slice(0,10);
+        const password = document.getElementById('pass').value;
+        const err = document.getElementById('err'); err.textContent='';
+        if (phone.length !== 10) { err.textContent='Ingresa un número válido'; return; }
+        if (!password) { err.textContent='Ingresa tu contraseña'; return; }
+        try {
+          const r = await fetch('/clientes/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, password }) });
+          const d = await r.json().catch(()=>({}));
+          if (!r.ok) {
+            if (r.status===404) err.textContent='Usuario no encontrado';
+            else if (r.status===401) err.textContent='Contraseña incorrecta';
+            else err.textContent = d?.error || 'No se pudo iniciar sesión';
+            return;
+          }
+          const form = d?.formulario || null;
+          if (form && form.id) {
+            try {
+              localStorage.setItem('painita_form_id', String(form.id));
+              localStorage.setItem('painita_form_step', String(form.paso_actual || 1));
+            } catch {}
+          }
+          location.href = '/';
+        } catch(e) {
+          err.textContent = 'Error de red';
         }
-        errEl.textContent = '';
-        const data = await r.json();
-        document.getElementById('id').textContent = data.id;
-        document.getElementById('status').textContent = data.status;
-        document.getElementById('amount').textContent = data.amount ?? '';
-        document.getElementById('steps').textContent = JSON.stringify(data.step_data, null, 2);
-      } catch (e) {
-        errEl.textContent = 'Error de red: ' + e;
       }
-    }
-    document.getElementById('createDemo').onclick = async () => {
-      const r = await fetch(API + '/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone:'3110000000', otp:'1234', password:'demo' }) });
-      const d = await r.json(); setId(d.id); await load();
-    };
-    document.getElementById('saveId').onclick = () => { const v = document.getElementById('setId').value; if (v) { setId(v); load(); } };
-    load();
-  </script>
-</body>
-</html>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('doLogin').addEventListener('click', doLogin);
+        document.getElementById('pass').addEventListener('keydown', (e)=>{ if (e.key==='Enter') doLogin(); });
+      });
+    </script>
+  </head>
+  <body>
+    <div class="center">
+      <div class="card">
+        <h1>Inicia sesión</h1>
+        <p>Continúa tu solicitud en el paso donde ibas.</p>
+        <div style="display:grid; gap:10px;">
+          <input id="phone" class="input" placeholder="Celular" maxlength="10" />
+          <input id="pass" class="input" type="password" placeholder="Contraseña" />
+          <button id="doLogin" class="btn">Entrar</button>
+          <div id="err" class="error"></div>
+        </div>
+        <p style="margin-top:12px;">¿No tienes cuenta? <a href="/">Solicita tu crédito</a></p>
+      </div>
+    </div>
+  </body>
+  </html>
