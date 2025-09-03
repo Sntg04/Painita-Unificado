@@ -28,6 +28,9 @@
     <meta charset="utf-8" />
     <title>Iniciar sesión</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,6 +76,13 @@
         }
       }
       document.addEventListener('DOMContentLoaded', () => {
+        // Eliminar cualquier contenido ajeno al login (por historial/bfcache)
+        try {
+          const root = document.getElementById('root');
+          if (root) {
+            Array.from(document.body.children).forEach(n => { if (n !== root) n.remove(); });
+          }
+        } catch {}
         document.getElementById('doLogin').addEventListener('click', doLogin);
         document.getElementById('pass').addEventListener('keydown', (e)=>{ if (e.key==='Enter') doLogin(); });
       });
