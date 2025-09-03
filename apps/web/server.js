@@ -350,12 +350,8 @@ app.get('/form/:id', async (req, res) => {
 // Aceptación de cliente (flag en formulario)
 app.patch('/form/:id/accept', async (req, res) => {
   try {
-    const url = `${CRM_BASE}/admin/forms/${encodeURIComponent(req.params.id)}`;
-    const { r, d } = await fetchJsonWithTimeout(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cliente_acepto: 'si' })
-    });
+    const url = `${CRM_BASE}/formularios/${encodeURIComponent(req.params.id)}/accept`;
+    const { r, d } = await fetchJsonWithTimeout(url, { method: 'PATCH' });
     res.status(r.status).json(d);
   } catch (e) {
     console.error('[web] PATCH /form/:id/accept proxy error:', e?.message || e);

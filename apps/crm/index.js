@@ -197,6 +197,15 @@ app.get('/formularios/:id', async (req, res) => {
   } catch (e) { res.status(e.status||404).json({ error: 'not found' }); }
 });
 
+// Cliente acepta préstamo (sin admin): marca cliente_acepto='si'
+app.patch('/formularios/:id/accept', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const f = await updateFormularioAdmin(id, { cliente_acepto: 'si' });
+    res.json({ ok: true, formulario: f });
+  } catch (e) { res.status(e.status||500).json({ ok:false, error: e.message || 'accept_failed' }); }
+});
+
 // Health check + counts for debugging
 app.get('/health', async (req, res) => {
   try {
