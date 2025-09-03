@@ -459,25 +459,33 @@
         // Calcular fecha de pago sumando días al hoy
         const due = new Date(); due.setDate(due.getDate() + (plazo||0));
         const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
-        const p1 = document.createElement('p'); p1.textContent = `Monto aprobado: ${desg.monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        // Mostrar plazo debajo del monto
-        const pPlazo = document.createElement('p'); pPlazo.textContent = `Plazo: ${plazo} días`;
-        // Botón para aceptar préstamo y mostrar mensaje solicitado
+        // Resumen ordenado (monto, plazo, fecha)
+        const summary = document.createElement('div');
+        summary.style.display = 'grid';
+        summary.style.gridTemplateColumns = '1fr 1fr';
+        summary.style.gap = '8px';
+        const row = (label, value) => {
+          const r = document.createElement('div'); r.className = 'row between';
+          const l = document.createElement('span'); l.textContent = label;
+          const v = document.createElement('strong'); v.textContent = value;
+          r.append(l, v); return r;
+        };
+        summary.append(
+          row('Monto aprobado', desg.monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })),
+          row('Plazo', `${plazo} días`),
+          row('Fecha de pago', dueStr)
+        );
+        // Desglose con el mismo componente visual del home
+        const breakdown = BreakdownPanel({ desglose: desg });
+        const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
+        // Botón al final
         const acceptBtn = document.createElement('button'); acceptBtn.className = 'btn btn-primary'; acceptBtn.textContent = 'Aceptar préstamo';
+        acceptBtn.style.marginTop = '12px'; acceptBtn.style.width = '100%';
         acceptBtn.addEventListener('click', () => {
           try { alert('de 5-10 minutos tendras el dinero en tu cuenta gracias por elegir painita'); } catch {}
           acceptBtn.disabled = true;
         });
-        const ul = document.createElement('ul'); ul.style.lineHeight = '1.6';
-        const li1 = document.createElement('li'); li1.textContent = `Interés: ${desg.interesEA.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const li2 = document.createElement('li'); li2.textContent = `Seguro: ${desg.seguro.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const li3 = document.createElement('li'); li3.textContent = `Fianza (c/IVA): ${desg.fianza.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const li4 = document.createElement('li'); li4.textContent = `Administración: ${desg.administracion.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const li5 = document.createElement('li'); li5.textContent = `IVA administración: ${desg.ivaAdministracion.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const total = document.createElement('p'); total.style.fontWeight='800'; total.textContent = `Total a pagar: ${desg.totalPagar.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
-        ul.append(li1, li2, li3, li4, li5);
-        card.append(h, p1, pPlazo, acceptBtn, ul, total, dueP);
+        card.append(h, summary, breakdown, dueP, acceptBtn);
         const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
       }
 
