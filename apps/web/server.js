@@ -232,9 +232,14 @@ if (LEGACY_DIR) {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 }
-app.get('/mi-solicitud', (req, res) => {
+// New login route (renamed)
+app.get('/login-we', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'public', 'mi-solicitud.html'));
+  res.sendFile(path.join(__dirname, 'public', 'login-we.html'));
+});
+// Backward-compat redirect
+app.get('/mi-solicitud', (req, res) => {
+  res.redirect(302, '/login-we');
 });
 
 // Check if phone exists (proxy to CRM)

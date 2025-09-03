@@ -5,8 +5,8 @@ export function PageLayout(children) {
   const top = document.createElement('div');
   top.className = 'topbar';
   top.innerHTML = `
-    <a class="topbar__brand" href="/">Painita</a>
-    <button class="topbar__login" type="button" onclick="window.location.href='/mi-solicitud'">Iniciar sesión</button>
+  <a class="topbar__brand" href="/">Painita</a>
+  <button class="topbar__login" type="button" onclick="window.location.href='/login-we'">Iniciar sesión</button>
   `;
   root.appendChild(top);
   // Content
