@@ -52,6 +52,8 @@ export async function init() {
       plazo integer,
       paso_actual integer default 0,
       uuid uuid,
+  -- Estado de aceptación del cliente
+  cliente_acepto varchar(20),
       -- Paso 1: Información Personal
       first_name varchar(50),
       second_name varchar(50),
@@ -114,6 +116,23 @@ export async function init() {
     `);
   } catch (e) {
     console.warn('[crm] alter image columns skipped:', e?.message || e);
+  }
+
+  // Ensure cliente_acepto column exists
+  try {
+    await pool.query(`
+      do $$
+      begin
+        if not exists (
+          select 1 from information_schema.columns
+          where table_name = 'formularios' and column_name = 'cliente_acepto'
+        ) then
+          alter table formularios add column cliente_acepto varchar(20);
+        end if;
+      end$$;
+    `);
+  } catch (e) {
+    console.warn('[crm] alter add cliente_acepto skipped:', e?.message || e);
   }
 
   // Seed admin opcional via variables de entorno
@@ -283,6 +302,7 @@ export function isPgEnabled() { return usePg; }
 // Helpers for formularios lifecycle
 const FORM_COLUMNS = [
   'celular','monto','plazo','paso_actual','uuid',
+  'cliente_acepto',
   'first_name','second_name','last_name','second_last_name','email','document_number','birth_date','document_issue_date','education_level','marital_status','gender',
   'department','city','locality','address',
   'employment_status','payment_cycle','income_range',
@@ -530,7 +550,7 @@ export async function getLatestFormularioForPhone(phone) {
     const f = s.step_data?.formulario || null;
     return f ? { id: f.id, celular: f.celular, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at, monto: f.monto ?? null, plazo: f.plazo ?? null } : null;
   }
-  const q = `select f.id, f.celular, f.paso_actual, f.estado, f.created_at, f.monto, f.plazo
+  const q = `select f.id, f.celular, f.paso_actual, f.estado, f.created_at, f.monto, f.plazo, f.cliente_acepto
              from formularios f join clientes c on f.cliente_id=c.id
              where c.phone=$1 order by f.id desc limit 1`;
   const { rows } = await pool.query(q, [phone]);
