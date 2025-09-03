@@ -249,11 +249,20 @@ app.get('/phone/exists', async (req, res) => {
   }
 });
 
-// Crear solicitud (después de teléfono+otp+password)
+// Crear solicitud (después de teléfono+otp+password) con timeout y manejo de errores
 app.post('/start', async (req, res) => {
-  const { phone, otp, password, monto, plazo } = req.body;
-  const data = await crm.createSolicitud({ phone, otp, password, monto, plazo });
-  res.json(data);
+  try {
+    const { phone, otp, password, monto, plazo } = req.body || {};
+    if (!phone || !otp || !password) return res.status(400).json({ error: 'phone_otp_password_required' });
+    const url = `${CRM_BASE}/solicitudes`;
+    const { r, d } = await fetchJsonWithTimeout(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, otp, password, monto, plazo }) });
+    console.log('[web] /start → CRM /solicitudes', r.status);
+    res.status(r.status).json(d);
+  } catch (e) {
+    console.error('[web] /start proxy error:', e?.message || e);
+    const timeout = /timeout|aborted|AbortError/i.test(String(e?.message || e));
+    res.status(502).json({ error: timeout ? 'timeout' : 'bad_gateway', message: timeout ? 'Tiempo de espera agotado' : 'No se pudo contactar al CRM' });
+  }
 });
 
 // Sincronizar paso

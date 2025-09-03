@@ -150,21 +150,31 @@
         }
         t1.addEventListener('click', () => toggleVisibility(pw1, t1));
         t2.addEventListener('click', () => toggleVisibility(pw2, t2));
-    card.querySelector('.next').addEventListener('click', async () => {
+    card.querySelector('.next').addEventListener('click', async (ev) => {
+          const btn = ev.currentTarget;
           const pass = pw1.value || '';
           const pass2v = pw2.value || '';
           if (pass.length < 6) { err.textContent = 'Mínimo 6 caracteres'; return; }
           if (pass !== pass2v) { err.textContent = 'Las contraseñas no coinciden'; return; }
           try {
-      state.password = pass;
-            await createSolicitud(pass);
+            state.password = pass;
+            btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Creando…'; err.textContent='';
+            const s = await createSolicitud(pass);
+            if (!s || !s.id) {
+              err.textContent = s?.error || 'No se pudo crear la solicitud';
+              btn.disabled = false; btn.textContent = orig; return;
+            }
+            btn.textContent = 'Iniciando formulario…';
             const f = await startFormulario();
-            if (!f?.id) { err.textContent = 'No se pudo iniciar el formulario'; return; }
+            if (!f?.id) { err.textContent = f?.error || 'No se pudo iniciar el formulario'; btn.disabled=false; btn.textContent=orig; return; }
             state.formStep = 1;
             state.fase = 'form';
             render();
           }
-          catch (e) { err.textContent = 'No se pudo crear la solicitud'; }
+          catch (e) {
+            err.textContent = 'No se pudo crear la solicitud';
+            btn.disabled = false; try { btn.textContent = 'Continuar'; } catch {}
+          }
         });
         const center = document.createElement('div');
         center.className = 'center-screen';
