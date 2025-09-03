@@ -36,6 +36,10 @@
       const el = document.querySelector(`.nav a[href="#${id}"]`);
       if (el) el.classList.add('active');
     }
+    function showSection(id) {
+      document.querySelectorAll('main.content section').forEach(s => { s.style.display = (s.id === id) ? 'block' : 'none'; });
+      setActive(id);
+    }
     async function loadData() {
       try {
         const r = await fetch('/admin/data', { credentials:'include' });
@@ -59,15 +63,21 @@
     }
     window.addEventListener('DOMContentLoaded', () => {
       loadData();
+      // Navigation: show only selected section
       document.querySelectorAll('.nav a').forEach(a => {
         a.addEventListener('click', (e) => {
-          setActive(a.getAttribute('href').slice(1));
+          e.preventDefault();
+          const id = a.getAttribute('href').slice(1);
+          history.replaceState(null, '', `#${id}`);
+          showSection(id);
         });
       });
-      const obs = new IntersectionObserver((ents) => {
-        ents.forEach(ent => { if (ent.isIntersecting) setActive(ent.target.id); });
-      }, { threshold: 0.5 });
-      document.querySelectorAll('section').forEach(s => obs.observe(s));
+      const initial = (location.hash||'').slice(1) || 'usuarios-web';
+      showSection(initial);
+      window.addEventListener('hashchange', () => {
+        const id = (location.hash||'').slice(1) || 'usuarios-web';
+        showSection(id);
+      });
     });
   </script>
   </head>
