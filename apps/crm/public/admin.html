@@ -78,6 +78,7 @@
       <nav class="nav">
         <a href="#usuarios-web" class="active">Usuarios Web</a>
         <a href="#usuarios-crm">Usuarios CRM</a>
+        <a href="#formularios">Formularios</a>
       </nav>
     </aside>
     <main class="content">
@@ -90,7 +91,7 @@
         </div>
         <table id="tClientes"><thead><tr><th>ID</th><th>Teléfono</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
       </section>
-      <section id="usuarios-crm">
+  <section id="usuarios-crm">
         <h2>Usuarios CRM (Staff)</h2>
         <div class="form-row">
           <input class="input" id="u_email" placeholder="Email" />
@@ -102,6 +103,10 @@
           <button class="btn primary" id="u_create">Crear</button>
         </div>
         <table id="tStaff"><thead><tr><th>ID</th><th>Email</th><th>Rol</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+      </section>
+      <section id="formularios">
+        <h2>Formularios</h2>
+        <table id="tForms"><thead><tr><th>ID</th><th>Celular</th><th>Paso</th><th>Estado</th><th>Creado</th></tr></thead><tbody></tbody></table>
       </section>
     </main>
   </div>
@@ -135,6 +140,16 @@
         if (!r.ok) return; const d = await r.json(); if (!d.ok) return;
         renderClientes(d.clientes||[]);
         renderUsuarios(d.usuarios||[]);
+        const bf = document.querySelector('#tForms tbody');
+        if (bf) {
+          bf.innerHTML = '';
+          (d.formularios||[]).forEach(x => {
+            const tr = document.createElement('tr');
+            const estado = x.estado || 'pendiente';
+            tr.innerHTML = `<td>${x.id}</td><td>${x.celular||''}</td><td>${x.paso_actual||0}</td><td>${estado}</td><td>${x.created_at||''}</td>`;
+            bf.appendChild(tr);
+          });
+        }
       } catch {}
     }
     window.addEventListener('DOMContentLoaded', () => {
