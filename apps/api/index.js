@@ -10,7 +10,13 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const CRM_BASE = process.env.CRM_BASE || 'http://localhost:4001';
+function resolveCrmBase() {
+  if (process.env.CRM_BASE) return process.env.CRM_BASE;
+  if (process.env.CRM_HOSTPORT) return `http://${process.env.CRM_HOSTPORT}`;
+  if (process.env.CRM_HOST && process.env.CRM_PORT) return `http://${process.env.CRM_HOST}:${process.env.CRM_PORT}`;
+  return 'http://localhost:4001';
+}
+const CRM_BASE = resolveCrmBase();
 const crm = new CRMClient(CRM_BASE);
 
 app.get('/', (req, res) => res.json({ ok: true }));

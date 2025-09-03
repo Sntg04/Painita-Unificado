@@ -10,11 +10,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 18
-      - key: CRM_BASE
+    - key: CRM_HOSTPORT
         fromService:
           type: web
           name: painita-crm
-          property: url
+      property: hostport
       - key: OTP_BYPASS
         value: "1" # remove in production
       - key: DEV_OTP_CODE
@@ -49,8 +49,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 18
-      - key: CRM_BASE
+    - key: CRM_HOSTPORT
         fromService:
           type: web
           name: painita-crm
-          property: url
+      property: hostport
