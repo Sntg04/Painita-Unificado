@@ -388,7 +388,8 @@
         }
         next.addEventListener('click', async () => {
           const data = {};
-          form.querySelectorAll('input').forEach(el => {
+          // Collect both inputs and selects (previously missed select values)
+          form.querySelectorAll('input, select').forEach(el => {
             if (el.dataset && el.dataset.aux) return; // omitir campos auxiliares (email_local, email_domain_custom, etc.)
             const key = (el.className || '').split(' ').find(c=>c && c!=='input');
             if (key) data[key]=el.value;
