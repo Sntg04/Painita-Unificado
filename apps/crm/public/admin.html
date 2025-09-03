@@ -123,7 +123,21 @@
           <input class="input" id="f_pass" placeholder="Contraseña (si crea cliente)" type="password" />
           <button class="btn primary" id="f_create">Crear</button>
         </div>
-        <table id="tForms"><thead><tr><th>ID</th><th>Celular</th><th>Monto</th><th>Plazo</th><th>Paso</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+        <table id="tForms"><thead><tr><th>ID</th><th>Nombre</th><th>Número</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+        <dialog id="formModal" style="border:0; border-radius:12px; width:min(900px, 96vw);">
+          <div style="padding:16px; max-height:80vh; overflow:auto;">
+            <h3 id="fm_title" style="margin-top:0;">Formulario</h3>
+            <div id="fm_body" style="display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px;"></div>
+            <div id="fm_images" style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;"></div>
+            <div style="display:flex; justify-content: space-between; margin-top: 16px;">
+              <div>
+                <button class="btn" id="fm_save">Guardar</button>
+                <button class="btn danger" id="fm_delete">Eliminar</button>
+              </div>
+              <button class="btn" id="fm_close">Cerrar</button>
+            </div>
+          </div>
+        </dialog>
       </section>
     </main>
   </div>
@@ -151,20 +165,20 @@
         tb.appendChild(tr);
       });
     }
+    function fullName(x){
+      const parts = [x.first_name, x.second_name, x.last_name, x.second_last_name].filter(Boolean);
+      return parts.join(' ') || '(sin nombre)';
+    }
     function renderFormularios(list) {
       const tb = document.querySelector('#tForms tbody'); tb.innerHTML='';
       list.forEach(x => {
         const tr = document.createElement('tr');
         const estado = x.estado || 'pendiente';
-        const paso = Number(x.paso_actual||0);
         tr.innerHTML = `<td>${x.id}</td>
-          <td><input class="input f_edit_phone" data-id="${x.id}" value="${x.celular||''}" /></td>
-          <td><input class="input f_edit_monto" type="number" data-id="${x.id}" value="${x.monto ?? ''}" /></td>
-          <td><input class="input f_edit_plazo" type="number" data-id="${x.id}" value="${x.plazo ?? ''}" /></td>
-          <td><input class="input f_edit_paso" type="number" min="0" max="7" data-id="${x.id}" value="${paso}" /></td>
-          <td><select class="input f_edit_estado" data-id="${x.id}"><option ${estado==='pendiente'?'selected':''} value="pendiente">pendiente</option><option ${estado==='en_espera'?'selected':''} value="en_espera">en_espera</option><option ${estado==='aprobado'?'selected':''} value="aprobado">aprobado</option><option ${estado==='rechazado'?'selected':''} value="rechazado">rechazado</option></select></td>
-          <td>${x.created_at||''}</td>
-          <td><button class="btn" data-action="savef" data-id="${x.id}">Guardar</button> <button class="btn danger" data-action="delf" data-id="${x.id}">Eliminar</button></td>`;
+          <td>${fullName(x)}</td>
+          <td>${x.celular||''}</td>
+          <td>${estado}</td>
+          <td><button class="btn" data-action="viewf" data-id="${x.id}">Ver más</button></td>`;
         tb.appendChild(tr);
       });
     }
@@ -226,19 +240,85 @@
         try { await api('POST','/admin/forms',{ phone, monto, plazo, password: pass }); document.getElementById('f_phone').value=''; document.getElementById('f_monto').value=''; document.getElementById('f_plazo').value=''; document.getElementById('f_pass').value=''; await loadData(); }
         catch(e){ alert('No se pudo crear: '+e.message); }
       });
-      // Save/delete formulario (delegation)
+      // Ver más / Eliminar / Guardar desde modal
+      const dlg = document.getElementById('formModal');
+      const fmTitle = document.getElementById('fm_title');
+      const fmBody = document.getElementById('fm_body');
+      const fmImages = document.getElementById('fm_images');
+      let currentFormId = null;
+      function field(label, value, key){
+        return `<label style='display:flex; flex-direction:column; gap:4px; font-size:12px;'><span style='color:#555;'>${label}</span><input class='input fm_edit' data-key='${key}' value='${value ?? ''}' /></label>`;
+      }
+      function selectField(label, value, key, options){
+        const opts = options.map(o => `<option ${o===value?'selected':''} value='${o}'>${o}</option>`).join('');
+        return `<label style='display:flex; flex-direction:column; gap:4px; font-size:12px;'><span style='color:#555;'>${label}</span><select class='input fm_edit' data-key='${key}'>${opts}</select></label>`;
+      }
+      document.getElementById('fm_close').addEventListener('click', () => dlg.close());
+      document.getElementById('fm_delete').addEventListener('click', async () => {
+        if (!currentFormId) return; if (!confirm('¿Eliminar formulario?')) return;
+        try { await api('DELETE', `/admin/forms/${currentFormId}`); dlg.close(); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
+      });
+      document.getElementById('fm_save').addEventListener('click', async () => {
+        if (!currentFormId) return;
+        const inputs = Array.from(fmBody.querySelectorAll('.fm_edit'));
+        const data = {};
+        for (const inp of inputs) { const k = inp.dataset.key; if (!k) continue; data[k] = inp.value; }
+        if (data.celular && !phoneValid(data.celular)) { alert('Teléfono inválido'); return; }
+        try { await api('PATCH', `/admin/forms/${currentFormId}`, data); await loadData(); }
+        catch(e){ alert('No se pudo guardar: '+e.message); }
+      });
       document.querySelector('#tForms').addEventListener('click', async (ev) => {
         const btn = ev.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const action = btn.dataset.action;
-        if (action === 'savef') {
-          const celular = document.querySelector(`.f_edit_phone[data-id="${id}"]`).value.trim();
-          const monto = Number(document.querySelector(`.f_edit_monto[data-id="${id}"]`).value || 0) || undefined;
-          const plazo = Number(document.querySelector(`.f_edit_plazo[data-id="${id}"]`).value || 0) || undefined;
-          const paso_actual = Number(document.querySelector(`.f_edit_paso[data-id="${id}"]`).value || 0) || 0;
-          const estado = document.querySelector(`.f_edit_estado[data-id="${id}"]`).value;
-          if (!phoneValid(celular)) { alert('Teléfono inválido'); return; }
-          try { await api('PATCH', `/admin/forms/${id}`, { celular, monto, plazo, paso_actual, estado }); await loadData(); } catch(e){ alert('No se pudo guardar: '+e.message); }
-        } else if (action === 'delf') {
-          if (!confirm('¿Eliminar formulario?')) return; try { await api('DELETE', `/admin/forms/${id}`); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
+        if (action === 'viewf') {
+          try {
+            const d = await api('GET', `/formularios/${id}`);
+            const x = d; currentFormId = id;
+            fmTitle.textContent = `Formulario #${id}`;
+            fmBody.innerHTML = [
+              field('Celular', x.celular, 'celular'),
+              field('Monto', x.monto, 'monto'),
+              field('Plazo', x.plazo, 'plazo'),
+              field('Paso actual', x.paso_actual, 'paso_actual'),
+              selectField('Estado', x.estado || 'pendiente', 'estado', ['pendiente','en_espera','aprobado','rechazado']),
+              field('Primer nombre', x.first_name, 'first_name'),
+              field('Segundo nombre', x.second_name, 'second_name'),
+              field('Primer apellido', x.last_name, 'last_name'),
+              field('Segundo apellido', x.second_last_name, 'second_last_name'),
+              field('Email', x.email, 'email'),
+              field('Documento', x.document_number, 'document_number'),
+              field('Nacimiento', x.birth_date, 'birth_date'),
+              field('Expedición', x.document_issue_date, 'document_issue_date'),
+              field('Nivel educativo', x.education_level, 'education_level'),
+              field('Estado civil', x.marital_status, 'marital_status'),
+              field('Género', x.gender, 'gender'),
+              field('Departamento', x.department, 'department'),
+              field('Ciudad', x.city, 'city'),
+              field('Localidad', x.locality, 'locality'),
+              field('Dirección', x.address, 'address'),
+              field('Actividad', x.employment_status, 'employment_status'),
+              field('Ciclo pago', x.payment_cycle, 'payment_cycle'),
+              field('Rango ingresos', x.income_range, 'income_range'),
+              field('Ref1 Parentesco', x.reference_one_relationship, 'reference_one_relationship'),
+              field('Ref1 Nombre', x.reference_one_name, 'reference_one_name'),
+              field('Ref1 Teléfono', x.reference_one_phone, 'reference_one_phone'),
+              field('Ref2 Parentesco', x.reference_two_relationship, 'reference_two_relationship'),
+              field('Ref2 Nombre', x.reference_two_name, 'reference_two_name'),
+              field('Ref2 Teléfono', x.reference_two_phone, 'reference_two_phone'),
+              field('Banco', x.bank_name, 'bank_name'),
+              field('Cuenta', x.account_number, 'account_number'),
+              field('Cuenta (confirm)', x.account_number_confirm, 'account_number_confirm')
+            ].join('');
+            fmImages.innerHTML = '';
+            const imgs = [ ['id_front','CC Frente'], ['id_back','CC Dorso'], ['selfie','Selfie'] ];
+            for (const [k,label] of imgs) {
+              if (x[k]) {
+                const figure = document.createElement('figure'); figure.style.margin='0'; figure.style.maxWidth='280px';
+                figure.innerHTML = `<figcaption style='font-size:12px; color:#555;'>${label}</figcaption><img src='${x[k]}' alt='${label}' style='max-width:100%; border:1px solid #eee; border-radius:8px;' />`;
+                fmImages.appendChild(figure);
+              }
+            }
+            if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.show();
+          } catch(e) { alert('No se pudo cargar: '+e.message); }
         }
       });
       loadData();
