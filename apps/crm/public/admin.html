@@ -173,11 +173,13 @@
       const tb = document.querySelector('#tForms tbody'); tb.innerHTML='';
       list.forEach(x => {
         const tr = document.createElement('tr');
-  const estado = (String(x.estado||'pendiente').toLowerCase() === 'rechazado') ? 'negado' : (x.estado || 'pendiente');
+        const estado = (String(x.estado||'pendiente').toLowerCase() === 'rechazado') ? 'negado' : (x.estado || 'pendiente');
+        const options = ['pendiente','en_espera','aprobado','negado']
+          .map(o => `<option ${o===estado?'selected':''} value="${o}">${o}</option>`).join('');
         tr.innerHTML = `<td>${x.id}</td>
           <td>${fullName(x)}</td>
           <td>${x.celular||''}</td>
-          <td>${estado}</td>
+          <td><select class="input f_estado" data-id="${x.id}">${options}</select></td>
           <td><button class="btn" data-action="viewf" data-id="${x.id}">Ver más</button></td>`;
         tb.appendChild(tr);
       });
@@ -321,6 +323,13 @@
             if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.show();
           } catch(e) { alert('No se pudo cargar: '+e.message); }
         }
+      });
+      // Cambio inline de estado en la tabla
+      document.querySelector('#tForms').addEventListener('change', async (ev) => {
+        const sel = ev.target.closest('select.f_estado'); if (!sel) return;
+        const id = sel.dataset.id; const estado = sel.value;
+        try { await api('PATCH', `/admin/forms/${id}`, { estado }); }
+        catch(e){ alert('No se pudo actualizar el estado: '+e.message); }
       });
       loadData();
     });
