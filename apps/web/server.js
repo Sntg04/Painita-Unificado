@@ -28,6 +28,31 @@ function resolveCrmBase() {
 const CRM_BASE = resolveCrmBase();
 const crm = new CRMClient(CRM_BASE);
 
+// Generic timeouts to avoid hanging on unreachable dependencies (Render env)
+const DEFAULT_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 8000);
+function abortAfter(ms) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  return { controller, cancel: () => clearTimeout(id) };
+}
+async function fetchJsonWithTimeout(url, opts = {}, ms = DEFAULT_TIMEOUT_MS) {
+  const { controller, cancel } = abortAfter(ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: controller.signal });
+    const d = await r.json().catch(() => ({}));
+    return { r, d };
+  } finally {
+    cancel();
+  }
+}
+function withTimeout(promise, ms = DEFAULT_TIMEOUT_MS, tag = 'timeout') {
+  let t;
+  const timeout = new Promise((_, reject) => {
+    t = setTimeout(() => reject(new Error(tag)), ms);
+  });
+  return Promise.race([promise.finally(() => clearTimeout(t)), timeout]);
+}
+
 // OTP: Solo Twilio Verify
 
 // Dev bypass: if OTP_BYPASS=1 or DEV_OTP_CODE is set, we'll skip Twilio Verify and accept a fixed code.
@@ -84,8 +109,8 @@ app.post('/otp/send', async (req, res) => {
     const verifySid = getVerifyServiceSid();
     if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured', message: 'OTP no configurado en el servidor. Define TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_VERIFY_SERVICE_SID o activa OTP_BYPASS=1 para pruebas.' });
 
-    const svc = client.verify.v2.services(verifySid);
-    const resp = await svc.verifications.create({ to: full, channel: 'sms' });
+  const svc = client.verify.v2.services(verifySid);
+  const resp = await withTimeout(svc.verifications.create({ to: full, channel: 'sms' }), DEFAULT_TIMEOUT_MS, 'twilio_timeout');
     return res.json({ ok: true, status: resp.status });
   } catch (e) {
     console.error('[otp] send error:', e);
@@ -108,8 +133,8 @@ app.post('/otp/verify', async (req, res) => {
     const verifySid = getVerifyServiceSid();
     if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured', message: 'OTP no configurado en el servidor. Define TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_VERIFY_SERVICE_SID o activa OTP_BYPASS=1 para pruebas.' });
 
-    const svc = client.verify.v2.services(verifySid);
-    const resp = await svc.verificationChecks.create({ to: full, code: String(code).trim() });
+  const svc = client.verify.v2.services(verifySid);
+  const resp = await withTimeout(svc.verificationChecks.create({ to: full, code: String(code).trim() }), DEFAULT_TIMEOUT_MS, 'twilio_timeout');
     if (resp.status === 'approved') return res.json({ ok:true });
     return res.status(400).json({ error:'invalid_otp', reason: resp.status });
   } catch (e) {
@@ -216,11 +241,11 @@ app.get('/phone/exists', async (req, res) => {
   try {
     const phone = String(req.query.phone||'').trim();
     if (!phone) return res.status(400).json({ error: 'phone required' });
-    const r = await fetch(`${CRM_BASE}/clientes/exists?phone=${encodeURIComponent(phone)}`);
-    const d = await r.json();
-    res.status(r.status).json(d);
+  const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/clientes/exists?phone=${encodeURIComponent(phone)}`);
+  res.status(r.status).json(d);
   } catch (e) {
-    res.status(502).json({ error: 'bad_gateway', message: 'No se pudo contactar al CRM' });
+  console.error('[web] /phone/exists error:', e.message || e);
+  res.status(502).json({ error: 'bad_gateway', message: 'No se pudo contactar al CRM' });
   }
 });
 
@@ -262,8 +287,7 @@ app.get('/status/:id', async (req, res) => {
 app.post('/form/start', async (req, res) => {
   try {
     const { phone, monto, plazo, password } = req.body || {};
-    const r = await fetch(`${CRM_BASE}/formularios/start`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, monto, plazo, password }) });
-    const d = await r.json();
+  const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/start`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, monto, plazo, password }) });
     console.log('[web] /form/start → CRM', r.status);
     res.status(r.status).json(d);
   } catch (e) {
@@ -274,8 +298,7 @@ app.post('/form/start', async (req, res) => {
 app.patch('/form/:id/step', async (req, res) => {
   try {
     const { step, data } = req.body || {};
-    const r = await fetch(`${CRM_BASE}/formularios/${encodeURIComponent(req.params.id)}/step`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ step, data }) });
-    const d = await r.json();
+  const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(req.params.id)}/step`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ step, data }) });
     console.log('[web] /form/:id/step → CRM', r.status);
     res.status(r.status).json(d);
   } catch (e) {
@@ -285,8 +308,7 @@ app.patch('/form/:id/step', async (req, res) => {
 });
 app.get('/form/:id', async (req, res) => {
   try {
-    const r = await fetch(`${CRM_BASE}/formularios/${encodeURIComponent(req.params.id)}`);
-    const d = await r.json();
+  const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(req.params.id)}`);
     console.log('[web] GET /form/:id → CRM', r.status);
     res.status(r.status).json(d);
   } catch (e) {
@@ -298,8 +320,7 @@ app.get('/form/:id', async (req, res) => {
 // Proxy CRM health
 app.get('/crm/health', async (req, res) => {
   try {
-    const r = await fetch(`${CRM_BASE}/health`);
-    const d = await r.json();
+  const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/health`);
     res.status(r.status).json(d);
   } catch (e) {
     res.status(502).json({ error:'bad_gateway', message:'No se pudo contactar al CRM' });

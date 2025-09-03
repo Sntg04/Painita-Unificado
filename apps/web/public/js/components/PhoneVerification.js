@@ -52,7 +52,10 @@ export function PhoneVerification({ onVerified }) {
         return;
       }
       hint.textContent = 'Enviando código...';
-      const r = await fetch('/otp/send', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: val }) });
+  const controller = new AbortController();
+  const tm = setTimeout(() => controller.abort(), 10000);
+  const r = await fetch('/otp/send', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: val }), signal: controller.signal });
+  clearTimeout(tm);
       if (!r.ok) {
         const d = await r.json().catch(()=>({}));
         const msg = d.message || d.error || 'No se pudo enviar el código';
@@ -71,7 +74,7 @@ export function PhoneVerification({ onVerified }) {
       otpEl.focus();
       sendBtn.textContent = originalText;
     } catch (e) {
-      err.textContent = 'Error de red al enviar el código';
+  err.textContent = e?.name === 'AbortError' ? 'Tiempo de espera agotado. Intenta de nuevo.' : 'Error de red al enviar el código';
       try { alert('Error de red al enviar el código'); } catch {}
       hint.textContent = '';
       sendBtn.disabled = false; // permitir reintento en error
