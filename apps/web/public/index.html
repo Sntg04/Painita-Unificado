@@ -1,0 +1,382 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Painita</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { PageLayout } from './js/components/PageLayout.js';
+    import { HeroHeading } from './js/components/HeroHeading.js';
+    import { CalculatorPanel } from './js/components/CalculatorPanel.js';
+    import { BreakdownPanel } from './js/components/BreakdownPanel.js';
+    import { PhoneVerification } from './js/components/PhoneVerification.js';
+    import { FinalStep } from './js/components/FinalStep.js';
+    import { InstitutionalSection } from './js/components/InstitutionalSection.js';
+    import { TestimonialsSection } from './js/components/TestimonialsSection.js';
+  import { FooterSection } from './js/components/FooterSection.js';
+    import { calcularDesglose } from './js/utils/finanzas.js';
+  import { FormStep1 } from './js/components/FormStep1.js';
+  import { FormStep2 } from './js/components/FormStep2.js';
+  import { FormStep3 } from './js/components/FormStep3.js';
+  import { FormStep4 } from './js/components/FormStep4.js';
+  import { FormStep5 } from './js/components/FormStep5.js';
+  import { FormStep6 } from './js/components/FormStep6.js';
+  import { FormStep7 } from './js/components/FormStep7.js';
+  import { ensureDataLoaded, getCiudades, isReady as colombiaReady } from './js/utils/colombiaData.js';
+
+    const state = {
+      monto: 300000,
+      plazo: 30,
+  fase: 'calculadora', // 'calculadora' | 'celular' | 'password' | 'form' | 'final'
+      celular: '',
+      otp: '',
+  password: '',
+      solicitudId: null,
+  formId: null,
+  formStep: 1,
+  formData: null,
+    };
+
+    const API = location.origin;
+
+    function savePrefs() {
+      try { localStorage.setItem('painita_plazo', String(state.plazo)); localStorage.setItem('painita_monto', String(state.monto)); } catch {}
+    }
+
+    async function createSolicitud(password) {
+      const body = { phone: state.celular, otp: state.otp, password, monto: state.monto, plazo: state.plazo };
+      const r = await fetch(API + '/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (d?.id) state.solicitudId = d.id;
+      return d;
+    }
+
+    async function startFormulario() {
+      const body = { phone: state.celular, monto: state.monto, plazo: state.plazo, password: state.password || undefined };
+      const r = await fetch(API + '/form/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (d?.id) { state.formId = d.id; state.formData = d; }
+      return d;
+    }
+
+    async function savePaso(step, data) {
+      if (!state.formId) throw new Error('No form id');
+      const r = await fetch(API + '/form/' + state.formId + '/step', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ step, data }) });
+      return r.json();
+    }
+
+    async function loadFormulario() {
+      if (!state.formId) throw new Error('No form id');
+      const r = await fetch(API + '/form/' + state.formId);
+      const d = await r.json();
+      state.formData = d;
+      return d;
+    }
+
+    function render() {
+      const root = document.getElementById('app');
+      root.innerHTML = '';
+
+  const sections = [];
+
+      if (state.fase === 'calculadora') {
+        sections.push(HeroHeading());
+  const row = document.createElement('div'); row.className = 'container-row paired no-gap spaced';
+        // Mounts
+        const calc = CalculatorPanel({
+          monto: state.monto,
+          plazo: state.plazo,
+          onMonto: (v)=>{ state.monto = v; updateBreakdown(); },
+          onPlazo: (v)=>{ state.plazo = v; updateBreakdown(); },
+          onSolicitar: ()=>{ savePrefs(); state.fase = 'celular'; render(); },
+        });
+  const breakdownMount = document.createElement('div');
+  breakdownMount.className = 'card breakdown-card';
+        row.appendChild(calc);
+        row.appendChild(breakdownMount);
+        sections.push(row);
+
+        function updateBreakdown() {
+          breakdownMount.replaceChildren(BreakdownPanel({ desglose: calcularDesglose(state.monto, state.plazo) }));
+        }
+        updateBreakdown();
+  sections.push(InstitutionalSection());
+  sections.push(TestimonialsSection());
+  sections.push(FooterSection());
+      } else if (state.fase === 'celular') {
+        const center = document.createElement('div');
+        center.className = 'center-screen';
+        center.appendChild(PhoneVerification({ onVerified: (phone, otp)=>{ state.celular = phone; state.otp = otp; state.fase = 'password'; render(); } }));
+        sections.push(center);
+      } else if (state.fase === 'password') {
+        // Minimal password capture inline to avoid a framework
+        const card = document.createElement('div'); card.className='card card-center pwd-card';
+        card.innerHTML = `
+          <div class='pwd-top'>
+            <h3 class='card__title'>Crea tu contraseña</h3>
+            <div class='input-wrap'>
+              <input class='input pass' type='password' placeholder='Contraseña' autocomplete='new-password' />
+              <button type='button' class='toggle-visibility tv1' aria-label='Mostrar u ocultar contraseña' title='Mostrar/Ocultar'>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+            <div class='input-wrap'>
+              <input class='input pass2' type='password' placeholder='Repite tu contraseña' autocomplete='new-password' />
+              <button type='button' class='toggle-visibility tv2' aria-label='Mostrar u ocultar contraseña' title='Mostrar/Ocultar'>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+            <button class='btn btn-primary next'>Continuar</button>
+          </div>
+          <div class='error'></div>
+        `;
+        const err = card.querySelector('.error');
+        const pw1 = card.querySelector('.pass');
+        const pw2 = card.querySelector('.pass2');
+        const t1 = card.querySelector('.tv1');
+        const t2 = card.querySelector('.tv2');
+        function toggleVisibility(inputEl, btnEl) {
+          const show = inputEl.type === 'password';
+          inputEl.type = show ? 'text' : 'password';
+          btnEl.classList.toggle('on', show);
+        }
+        t1.addEventListener('click', () => toggleVisibility(pw1, t1));
+        t2.addEventListener('click', () => toggleVisibility(pw2, t2));
+    card.querySelector('.next').addEventListener('click', async () => {
+          const pass = pw1.value || '';
+          const pass2v = pw2.value || '';
+          if (pass.length < 6) { err.textContent = 'Mínimo 6 caracteres'; return; }
+          if (pass !== pass2v) { err.textContent = 'Las contraseñas no coinciden'; return; }
+          try {
+      state.password = pass;
+            await createSolicitud(pass);
+            const f = await startFormulario();
+            if (!f?.id) { err.textContent = 'No se pudo iniciar el formulario'; return; }
+            state.formStep = 1;
+            state.fase = 'form';
+            render();
+          }
+          catch (e) { err.textContent = 'No se pudo crear la solicitud'; }
+        });
+        const center = document.createElement('div');
+        center.className = 'center-screen';
+        center.appendChild(card);
+        sections.push(center);
+      } else if (state.fase === 'form') {
+        // Si aún no existe formId, inícialo y muestra loader
+        if (!state.formId) {
+          const loading = document.createElement('div'); loading.className='card card-center';
+          loading.innerHTML = `<h3 class='card__title'>Iniciando formulario...</h3><div class='error'></div><button class='btn retry hidden'>Reintentar</button>`;
+          const err = loading.querySelector('.error'); const retry = loading.querySelector('.retry');
+          const center = document.createElement('div'); center.className='center-screen'; center.appendChild(loading); sections.push(center);
+          const doStart = () => {
+            err.textContent = ''; retry.classList.add('hidden');
+            startFormulario().then(() => render()).catch((e) => { err.textContent = 'No se pudo iniciar el formulario'; retry.classList.remove('hidden'); });
+          };
+          retry.addEventListener('click', doStart);
+          doStart();
+          const page = PageLayout(sections); document.getElementById('app').appendChild(page); return;
+        }
+        // Si hay formId pero no hay datos cacheados, cárgalos y muestra loader
+        if (!state.formData || state.formData.id !== state.formId) {
+          const loading = document.createElement('div'); loading.className='card card-center';
+          loading.innerHTML = `<h3 class='card__title'>Cargando formulario...</h3><div class='error'></div><button class='btn retry hidden'>Reintentar</button>`;
+          const err = loading.querySelector('.error'); const retry = loading.querySelector('.retry');
+          const center = document.createElement('div'); center.className='center-screen'; center.appendChild(loading); sections.push(center);
+          const doLoad = () => {
+            err.textContent = ''; retry.classList.add('hidden');
+            loadFormulario().then(() => render()).catch(() => { err.textContent = 'No se pudo cargar el formulario'; retry.classList.remove('hidden'); });
+          };
+          retry.addEventListener('click', doLoad);
+          doLoad();
+          const page = PageLayout(sections); document.getElementById('app').appendChild(page); return;
+        }
+  const card = document.createElement('div'); card.className='card card-center';
+  const step = state.formStep;
+  const progressWrap = document.createElement('div'); progressWrap.className = 'progress';
+  const progressText = document.createElement('div'); progressText.className = 'progress__text'; progressText.textContent = `Paso ${step} de 7`;
+  const progressBar = document.createElement('div'); progressBar.className = 'progress__bar'; progressBar.style.width = `${Math.min(100, Math.max(0, (step-1)/6*100))}%`;
+  progressWrap.append(progressText, progressBar);
+  const title = document.createElement('h3'); title.className='card__title';
+        const form = document.createElement('div'); form.className='form-step';
+        const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='10px'; btns.style.justifyContent='center';
+        const back = document.createElement('button'); back.textContent='Atrás'; back.className='btn';
+        const next = document.createElement('button'); next.textContent= step>=7 ? 'Finalizar' : 'Continuar'; next.className='btn btn-primary';
+        const err = document.createElement('div'); err.className='error';
+
+        function input(placeholder, cls, attrs={}) {
+          const el = document.createElement('input'); el.className='input ' + (cls||''); el.placeholder = placeholder; Object.entries(attrs).forEach(([k,v])=> el.setAttribute(k,v)); return el;
+        }
+
+        function hydrateFormValues(container, data) {
+          if (!data) return;
+          container.querySelectorAll('input, select').forEach(el => {
+            const key = (el.className || '').split(' ').find(c => c && c !== 'input');
+            if (!key) return;
+            const val = data[key];
+            if (val == null) return;
+            el.value = val;
+          });
+          // Hidratación específica: email compuesto (usuario + dominio)
+          if (data.email) {
+            const user = container.querySelector('input.email_local');
+            const domainSel = container.querySelector('select.email_domain_select');
+            const custom = container.querySelector('input.email_domain_custom');
+            const hiddenEmail = container.querySelector('input.email[type="hidden"]');
+            if (user && domainSel && custom && hiddenEmail) {
+              const parts = String(data.email).split('@');
+              if (parts.length >= 2) {
+                const local = parts.shift();
+                const dom = '@' + parts.join('@');
+                user.value = local || '';
+                const found = Array.from(domainSel.options).map(o=>o.value).find(d => d.toLowerCase() === dom.toLowerCase());
+                if (found) { domainSel.value = found; custom.style.display='none'; custom.value=''; }
+                else { domainSel.value = 'otro'; custom.style.display=''; custom.value = dom; }
+                hiddenEmail.value = data.email;
+              }
+            }
+          }
+          // Hidratación específica: ciudades dependientes del departamento
+          const depSel = container.querySelector('select.department');
+          const citySel = container.querySelector('select.city');
+          if (depSel && citySel && data.department) {
+            const setCities = () => {
+              citySel.innerHTML = '';
+              const empty = document.createElement('option'); empty.value=''; empty.textContent='Selecciona...'; citySel.appendChild(empty);
+              const cities = getCiudades(data.department) || [];
+              cities.forEach(c => { const op=document.createElement('option'); op.value=c; op.textContent=c; citySel.appendChild(op); });
+              if (data.city) citySel.value = data.city;
+            };
+            if (!colombiaReady()) { ensureDataLoaded().then(setCities).catch(()=>{}); }
+            else setCities();
+          }
+        }
+
+        if (step === 1) {
+          title.textContent = 'Paso 1: Información Personal';
+          form.append(FormStep1());
+        } else if (step === 2) {
+          title.textContent = 'Paso 2: Contacto y residencia';
+          form.append(FormStep2());
+        } else if (step === 3) {
+          title.textContent = 'Paso 3: Actividad económica';
+          form.append(FormStep3());
+        } else if (step === 4) {
+          title.textContent = 'Paso 4: Referencias';
+          form.append(FormStep4());
+        } else if (step === 5) {
+          title.textContent = 'Paso 5: Datos bancarios';
+          form.append(FormStep5());
+        } else if (step === 6) {
+          title.textContent = 'Paso 6: Archivos';
+          form.append(FormStep6());
+        } else if (step === 7) {
+          title.textContent = 'Paso 7: Validación de identidad';
+          form.append(FormStep7());
+          // Auto-envío si el control de selfie dispara evento por 3 reintentos
+      const onAuto = (e) => {
+            const val = e?.detail?.value;
+            const data = { selfie: val };
+            savePaso(7, data).then(() => {
+              try { localStorage.removeItem('painita_selfie_retake_count'); } catch {}
+        // Ir a página de espera
+        state.fase = 'espera';
+              render();
+            }).catch(() => {});
+          };
+          window.addEventListener('painita:selfie:autoSubmit', onAuto, { once: true });
+        }
+
+    // Prefill values from saved data
+    hydrateFormValues(form, state.formData);
+
+        back.addEventListener('click', () => { if (state.formStep>1) { state.formStep -= 1; render(); } });
+
+        function validateStep(step) {
+          const v = (cls) => (form.querySelector('.'+cls)?.value || '').trim();
+          // basic validations for key fields
+          if (step === 1) {
+            if (!v('first_name') || !v('last_name') || !v('email') || !v('document_number')) return 'Completa los campos obligatorios';
+            // Validación: expedición debe ser al menos 18 años después de nacimiento
+            const bdStr = v('birth_date'); const idStr = v('document_issue_date');
+            if (bdStr && idStr) {
+              const [by,bm,bd] = bdStr.split('-').map(n=>parseInt(n,10));
+              const [iy,im,id] = idStr.split('-').map(n=>parseInt(n,10));
+              if (by && bm && bd && iy && im && id) {
+                const bDate = new Date(by, bm-1, bd);
+                const minIssue = new Date(bDate.getTime());
+                minIssue.setFullYear(minIssue.getFullYear()+18);
+                const issueDate = new Date(iy, im-1, id);
+                if (issueDate < minIssue) return 'La fecha de expedición debe ser al menos 18 años después de la fecha de nacimiento';
+              }
+            }
+          } else if (step === 2) {
+            if (!v('address')) return 'Ingresa tu dirección';
+          } else if (step === 3) {
+            if (!v('employment_status')) return 'Selecciona tu situación laboral';
+          } else if (step === 4) {
+            if (!v('reference_one_name') || !v('reference_one_phone')) return 'Ingresa al menos una referencia completa';
+          } else if (step === 5) {
+            const a = v('account_number'); const b = v('account_number_confirm');
+            if (!a || !b) return 'Ingresa y confirma tu cuenta';
+            if (a !== b) return 'La confirmación de la cuenta no coincide';
+          } else if (step === 6) {
+            if (!v('id_front') || !v('id_back')) return 'Adjunta las fotos del documento por ambos lados';
+          } else if (step === 7) {
+            if (!v('selfie')) return 'Toma la foto de validación de identidad';
+          }
+          return null;
+        }
+        next.addEventListener('click', async () => {
+          const data = {};
+          form.querySelectorAll('input').forEach(el => {
+            if (el.dataset && el.dataset.aux) return; // omitir campos auxiliares (email_local, email_domain_custom, etc.)
+            const key = (el.className || '').split(' ').find(c=>c && c!=='input');
+            if (key) data[key]=el.value;
+          });
+          const message = validateStep(step);
+          if (message) { err.textContent = message; return; }
+          try {
+      const saved = await savePaso(step, data);
+      // cache latest saved values
+      state.formData = saved;
+            if (step >= 7) { state.fase = 'espera'; render(); return; }
+            state.formStep += 1; render();
+          } catch (e) { err.textContent = 'No se pudo guardar el paso'; }
+        });
+
+        if (step === 1) back.disabled = true;
+
+        btns.append(back, next);
+        card.append(progressWrap, title, form, btns, err);
+        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+      } else if (state.fase === 'final') {
+        const desg = calcularDesglose(state.monto, state.plazo);
+  sections.push(FinalStep({ totalPagar: desg.totalPagar, celular: state.celular, solicitudId: state.solicitudId }));
+  sections.push(FooterSection());
+      } else if (state.fase === 'espera') {
+        const card = document.createElement('div'); card.className='card card-center';
+        const h = document.createElement('h3'); h.className='card__title'; h.textContent = '¡Bienvenido Panita!';
+        const p1 = document.createElement('p'); p1.textContent = 'Tu préstamo está en estado de espera.';
+        const p2 = document.createElement('p'); p2.textContent = 'En un lapso de 10 a 30 minutos puedes volver y conocer tu preaprobado.';
+        const hint = document.createElement('p'); hint.style.color = '#666'; hint.style.fontSize = '0.95rem'; hint.textContent = 'Puedes cerrar esta ventana y regresar más tarde.';
+        card.append(h, p1, p2, hint);
+        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+      }
+
+      const page = PageLayout(sections);
+      root.appendChild(page);
+    }
+
+    render();
+  </script>
+</body>
+</html>

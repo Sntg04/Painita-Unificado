@@ -1,0 +1,120 @@
+{
+  "solicitudes": [
+    {
+      "id": 7,
+      "phone": "3005550000",
+      "otp": "1234",
+      "password": "x",
+      "step_data": {},
+      "status": "incomplete",
+      "amount": null,
+      "created_at": "2025-08-29T20:45:40.413Z"
+    },
+    {
+      "id": 6,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:33:25.301Z"
+    },
+    {
+      "id": 5,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:32:37.429Z"
+    },
+    {
+      "id": 4,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:31:53.295Z"
+    },
+    {
+      "id": 3,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:29:42.878Z"
+    },
+    {
+      "id": 2,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:28:52.931Z"
+    },
+    {
+      "id": 1,
+      "phone": "3001234567",
+      "otp": "1234",
+      "password": "secret",
+      "step_data": {
+        "personal": {
+          "name": "Juan Perez"
+        },
+        "contact": {
+          "email": "juan@example.com"
+        },
+        "final": {
+          "ok": true
+        }
+      },
+      "status": "approved",
+      "amount": 1500000,
+      "created_at": "2025-08-29T20:23:54.873Z"
+    }
+  ],
+  "lastId": 7
+}

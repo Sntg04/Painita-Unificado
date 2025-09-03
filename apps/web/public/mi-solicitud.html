@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Mi Solicitud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Volver</a>
+  <h1>Estado de mi solicitud</h1>
+  <div class="kv">
+    <div><b>ID</b></div><div id="id">-</div>
+    <div><b>Status</b></div><div id="status">-</div>
+    <div><b>Monto</b></div><div id="amount">-</div>
+  </div>
+  <div style="margin:12px 0;">
+    <button id="createDemo">Crear solicitud demo</button>
+    <label style="margin-left:10px;">Set ID manual: <input id="setId" placeholder="e.g. 1" style="width:80px" /> <button id="saveId">Guardar</button></label>
+  </div>
+  <h3>Steps</h3>
+  <pre id="steps"></pre>
+  <div id="error" style="color:#b00;"></div>
+  <script>
+    const storageKey = 'painita_solicitud_id';
+    let id = localStorage.getItem(storageKey);
+    const API = location.origin;
+    const errEl = document.getElementById('error');
+    function setId(val){ id = String(val); localStorage.setItem(storageKey, id); document.getElementById('id').textContent = id; }
+    if (!id) { errEl.textContent = 'No hay solicitud activa. Crea una solicitud demo o ingresa un ID.'; }
+    async function load() {
+      if (!id) return;
+      try {
+        const r = await fetch(API + `/status/${id}`);
+        if (!r.ok) {
+          errEl.textContent = `Error ${r.status}: No se encontró la solicitud ${id}`;
+          return;
+        }
+        errEl.textContent = '';
+        const data = await r.json();
+        document.getElementById('id').textContent = data.id;
+        document.getElementById('status').textContent = data.status;
+        document.getElementById('amount').textContent = data.amount ?? '';
+        document.getElementById('steps').textContent = JSON.stringify(data.step_data, null, 2);
+      } catch (e) {
+        errEl.textContent = 'Error de red: ' + e;
+      }
+    }
+    document.getElementById('createDemo').onclick = async () => {
+      const r = await fetch(API + '/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone:'3110000000', otp:'1234', password:'demo' }) });
+      const d = await r.json(); setId(d.id); await load();
+    };
+    document.getElementById('saveId').onclick = () => { const v = document.getElementById('setId').value; if (v) { setId(v); load(); } };
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Redirigiendo…</title>
+  <meta http-equiv="refresh" content="0; url=/login.html" />
+  <script>
+    // Fallback JS redirect in case meta refresh is blocked
+    (function(){
+  try { window.location.replace('/login.html'); } catch {}
+    })();
+  </script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; }
+    a { color: #0a66c2; }
+  </style>
+</head>
+<body>
+  <p>Redirigiendo al login… Si no sucede automáticamente, <a href="/login.html">haz clic aquí</a>.</p>
+</body>
+</html>

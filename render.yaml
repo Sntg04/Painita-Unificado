@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: painita-web
+    env: node
+    plan: free
+    rootDir: apps/web
+  buildCommand: npm install --prefix ../.. && npm install && echo "build done"
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: CRM_BASE
+        fromService:
+          type: web
+          name: painita-crm
+          property: url
+      - key: OTP_BYPASS
+        value: "1" # remove in production
+      - key: DEV_OTP_CODE
+        value: "123456" # remove in production
+      - key: DEFAULT_COUNTRY_CODE
+        value: "+57"
+
+  - type: web
+    name: painita-crm
+    env: node
+    plan: free
+    rootDir: apps/crm
+  buildCommand: npm install --prefix ../.. && npm install && echo "build done"
+    startCommand: node index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # optional; set to enable Postgres
+
+  - type: web
+    name: painita-api
+    env: node
+    plan: free
+    rootDir: apps/api
+  buildCommand: npm install --prefix ../.. && npm install && echo "build done"
+    startCommand: node index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: CRM_BASE
+        fromService:
+          type: web
+          name: painita-crm
+          property: url

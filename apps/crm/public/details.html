@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Detalle Solicitud</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 8px; }
+    .kv { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
+  </style>
+</head>
+<body>
+  <a href="index.html">← Volver</a>
+  <h1>Detalle de Solicitud</h1>
+  <div class="kv">
+    <div><b>ID</b></div><div id="id"></div>
+    <div><b>Teléfono</b></div><div id="phone"></div>
+    <div><b>Status</b></div><div id="status"></div>
+    <div><b>Monto</b></div><div id="amount"></div>
+    <div><b>Creado</b></div><div id="created"></div>
+  </div>
+  <h3>Steps</h3>
+  <pre id="steps"></pre>
+  <script>
+    const id = new URL(location.href).searchParams.get('id');
+    const API = location.origin;
+    async function load() {
+      const s = await fetch(API + `/solicitudes/${id}`).then(r=>r.json());
+      document.getElementById('id').textContent = s.id;
+      document.getElementById('phone').textContent = s.phone;
+      document.getElementById('status').textContent = s.status;
+      document.getElementById('amount').textContent = s.amount ?? '';
+      document.getElementById('created').textContent = s.created_at;
+      document.getElementById('steps').textContent = JSON.stringify(s.step_data, null, 2);
+    }
+    load();
+  </script>
+</body>
+</html>
