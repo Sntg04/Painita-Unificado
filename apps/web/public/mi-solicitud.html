@@ -79,7 +79,7 @@
     </script>
   </head>
   <body>
-    <div class="center">
+    <div class="center" id="root">
       <div class="card">
         <h1>Inicia sesión</h1>
         <p>Continúa tu solicitud en el paso donde ibas.</p>
@@ -92,5 +92,10 @@
         <p style="margin-top:12px;">¿No tienes cuenta? <a href="/">Solicita tu crédito</a></p>
       </div>
     </div>
+    <script>
+      // Limpieza defensiva en navegadores con historial/previa cache
+      try { document.body.scrollTop = 0; document.documentElement.scrollTop = 0; } catch {}
+      try { document.body.innerHTML = document.body.innerHTML; } catch {}
+    </script>
   </body>
   </html>

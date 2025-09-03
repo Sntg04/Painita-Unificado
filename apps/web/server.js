@@ -233,6 +233,7 @@ if (LEGACY_DIR) {
   });
 }
 app.get('/mi-solicitud', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'public', 'mi-solicitud.html'));
 });
 
