@@ -142,6 +142,27 @@
     </main>
   </div>
   <script>
+    // Lógica de calculadora (igual a la web)
+    const EA = 0.23;            // 23% E.A.
+    const seguroRate = 0.00449; // 0,449%
+    const ADMIN_FIJO = 33000;
+    const ivaRate = 0.19;
+    function getTarifaBaseFianza(capital) {
+      if (capital <= 200000) return 0.14;
+      if (capital <= 300000) return 0.12;
+      if (capital <= 400000) return 0.11;
+      return 0.1059;
+    }
+    function calcularDesglose(monto, plazoDias) {
+      const interesEA = monto * (Math.pow(1 + EA, plazoDias / 365) - 1);
+      const seguro = monto * seguroRate;
+      const fianza = monto * getTarifaBaseFianza(monto) * 1.19; // incluye IVA
+      const administracion = ADMIN_FIJO;
+      const ivaAdministracion = administracion * ivaRate;
+      const totalPagar = monto + interesEA + seguro + fianza + administracion + ivaAdministracion;
+      return { monto, interesEA, seguro, fianza, administracion, ivaAdministracion, totalPagar };
+    }
+    function formatCOP(v){ return (v||0).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}); }
     async function api(method, url, body) {
       const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials:'include', body: body ? JSON.stringify(body) : undefined });
       const d = await r.json().catch(() => ({}));
@@ -266,6 +287,24 @@
         const data = {};
         for (const inp of inputs) { const k = inp.dataset.key; if (!k) continue; data[k] = inp.value; }
         if (data.celular && !phoneValid(data.celular)) { alert('Teléfono inválido'); return; }
+        // Si se aprueba, pedir monto/plazo si no están y mostrar desglose para confirmar
+        if (String(data.estado||'').toLowerCase() === 'aprobado') {
+          let monto = Number(data.monto||0);
+          let plazo = parseInt(data.plazo||0,10);
+          if (!monto || monto <= 0) {
+            const mStr = prompt('Monto aprobado (COP):', String(monto||''));
+            if (mStr == null) return; monto = Number(String(mStr).replace(/\D+/g,'')); if (!monto || monto <= 0) { alert('Monto inválido'); return; }
+            data.monto = monto;
+          }
+          if (!plazo || plazo <= 0) {
+            const pStr = prompt('Plazo (en días):', String(plazo||'30'));
+            if (pStr == null) return; plazo = parseInt(pStr,10); if (!plazo || plazo <= 0) { alert('Plazo inválido'); return; }
+            data.plazo = plazo;
+          }
+          const desg = calcularDesglose(monto, plazo);
+          const msg = `Desglose:\n- Interés: ${formatCOP(desg.interesEA)}\n- Seguro: ${formatCOP(desg.seguro)}\n- Fianza (c/IVA): ${formatCOP(desg.fianza)}\n- Administración: ${formatCOP(desg.administracion)}\n- IVA administración: ${formatCOP(desg.ivaAdministracion)}\nTOTAL A PAGAR: ${formatCOP(desg.totalPagar)}\n\n¿Confirmar aprobación?`;
+          if (!confirm(msg)) return;
+        }
         try { await api('PATCH', `/admin/forms/${currentFormId}`, data); await loadData(); }
         catch(e){ alert('No se pudo guardar: '+e.message); }
       });
@@ -324,12 +363,33 @@
           } catch(e) { alert('No se pudo cargar: '+e.message); }
         }
       });
+      // Guardar estado previo para revertir si cancela
+      document.querySelector('#tForms').addEventListener('focusin', (ev) => {
+        const sel = ev.target.closest('select.f_estado'); if (!sel) return;
+        sel.dataset.prev = sel.value;
+      });
       // Cambio inline de estado en la tabla
       document.querySelector('#tForms').addEventListener('change', async (ev) => {
         const sel = ev.target.closest('select.f_estado'); if (!sel) return;
         const id = sel.dataset.id; const estado = sel.value;
+        if (estado === 'aprobado') {
+          const mStr = prompt('Monto aprobado (COP):', '');
+          if (mStr == null) { sel.value = sel.dataset.prev || 'pendiente'; return; }
+          const monto = Number(String(mStr).replace(/\D+/g,''));
+          if (!monto || monto <= 0) { alert('Monto inválido'); sel.value = sel.dataset.prev || 'pendiente'; return; }
+          const pStr = prompt('Plazo (en días):', '30');
+          if (pStr == null) { sel.value = sel.dataset.prev || 'pendiente'; return; }
+          const plazo = parseInt(pStr,10);
+          if (!plazo || plazo <= 0) { alert('Plazo inválido'); sel.value = sel.dataset.prev || 'pendiente'; return; }
+          const d = calcularDesglose(monto, plazo);
+          const msg = `Desglose:\n- Interés: ${formatCOP(d.interesEA)}\n- Seguro: ${formatCOP(d.seguro)}\n- Fianza (c/IVA): ${formatCOP(d.fianza)}\n- Administración: ${formatCOP(d.administracion)}\n- IVA administración: ${formatCOP(d.ivaAdministracion)}\nTOTAL A PAGAR: ${formatCOP(d.totalPagar)}\n\n¿Confirmar aprobación?`;
+          if (!confirm(msg)) { sel.value = sel.dataset.prev || 'pendiente'; return; }
+          try { await api('PATCH', `/admin/forms/${id}`, { estado, monto, plazo }); }
+          catch(e){ alert('No se pudo actualizar: '+e.message); sel.value = sel.dataset.prev || 'pendiente'; }
+          return;
+        }
         try { await api('PATCH', `/admin/forms/${id}`, { estado }); }
-        catch(e){ alert('No se pudo actualizar el estado: '+e.message); }
+        catch(e){ alert('No se pudo actualizar el estado: '+e.message); sel.value = sel.dataset.prev || 'pendiente'; }
       });
       loadData();
     });
