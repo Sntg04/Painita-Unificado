@@ -505,3 +505,121 @@ export async function loginAdmin({ email, password }) {
   if (!ok) throw Object.assign(new Error('unauthorized'), { status: 401 });
   return { id: u.id, email: u.email, role: u.role };
 }
+
+// Admin CRUD: Clientes (Web)
+export async function createClient({ phone, password }) {
+  if (!phone || !password) throw Object.assign(new Error('phone_password_required'), { status: 400 });
+  if (!usePg) {
+    const db = readFileDB();
+    const exists = db.solicitudes.find(s => s.phone === phone);
+    if (exists) throw Object.assign(new Error('conflict'), { status: 409 });
+    const id = (db.lastId || 0) + 1;
+    db.lastId = id;
+    const s = { id, phone, otp: '', password: hashPassword(password), step_data: {}, status: 'incomplete', amount: null, created_at: new Date().toISOString() };
+    db.solicitudes.unshift(s);
+    writeFileDB(db);
+    return { id, phone, created_at: s.created_at };
+  }
+  // PG
+  const password_hash = hashPassword(password);
+  try {
+    const { rows } = await pool.query('insert into clientes(phone, password_hash) values ($1,$2) returning id, phone, created_at', [phone, password_hash]);
+    return rows[0];
+  } catch (e) {
+    if (String(e?.message||'').includes('duplicate key')) throw Object.assign(new Error('conflict'), { status: 409 });
+    throw e;
+  }
+}
+
+export async function updateClient(id, { phone, password }) {
+  const cid = Number(id);
+  if (!usePg) {
+    const db = readFileDB();
+    const idx = db.solicitudes.findIndex(s => s.id === cid);
+    if (idx === -1) throw Object.assign(new Error('not found'), { status: 404 });
+    if (phone) db.solicitudes[idx].phone = phone;
+    if (password) db.solicitudes[idx].password = hashPassword(password);
+    writeFileDB(db);
+    const s = db.solicitudes[idx];
+    return { id: s.id, phone: s.phone, created_at: s.created_at };
+  }
+  // PG
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (phone) { sets.push(`phone = $${i++}`); vals.push(phone); }
+  if (password) { sets.push(`password_hash = $${i++}`); vals.push(hashPassword(password)); }
+  if (!sets.length) return await (async () => { const { rows } = await pool.query('select id, phone, created_at from clientes where id=$1', [cid]); if (!rows.length) throw Object.assign(new Error('not found'), { status:404 }); return rows[0]; })();
+  vals.push(cid);
+  const q = `update clientes set ${sets.join(', ')} where id = $${i} returning id, phone, created_at`;
+  try {
+    const { rows } = await pool.query(q, vals);
+    if (!rows.length) throw Object.assign(new Error('not found'), { status: 404 });
+    return rows[0];
+  } catch (e) {
+    if (String(e?.message||'').includes('duplicate key')) throw Object.assign(new Error('conflict'), { status: 409 });
+    throw e;
+  }
+}
+
+export async function deleteClient(id) {
+  const cid = Number(id);
+  if (!usePg) {
+    const db = readFileDB();
+    const idx = db.solicitudes.findIndex(s => s.id === cid);
+    if (idx === -1) throw Object.assign(new Error('not found'), { status: 404 });
+    db.solicitudes.splice(idx, 1);
+    writeFileDB(db);
+    return { ok: true };
+  }
+  // PG: prevent delete if has formularios
+  const { rows: f } = await pool.query('select 1 from formularios where cliente_id=$1 limit 1', [cid]);
+  if (f.length) throw Object.assign(new Error('has_forms'), { status: 409 });
+  const { rowCount } = await pool.query('delete from clientes where id=$1', [cid]);
+  if (!rowCount) throw Object.assign(new Error('not found'), { status: 404 });
+  return { ok: true };
+}
+
+// Admin CRUD: Usuarios (Staff)
+export async function updateUser({ id, email, password, role }) {
+  const uid = Number(id);
+  if (!usePg) {
+    const db = readFileDB();
+    db.usuarios = db.usuarios || [];
+    const u = db.usuarios.find(x => x.id === uid);
+    if (!u) throw Object.assign(new Error('not found'), { status: 404 });
+    if (email) u.email = email;
+    if (role) u.role = role;
+    if (password) u.password_hash = hashPassword(password);
+    writeFileDB(db);
+    return { id: u.id, email: u.email, role: u.role, created_at: u.created_at };
+  }
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  if (email) { sets.push(`email = $${i++}`); vals.push(email); }
+  if (role) { sets.push(`role = $${i++}`); vals.push(role); }
+  if (password) { sets.push(`password_hash = $${i++}`); vals.push(hashPassword(password)); }
+  if (!sets.length) { const { rows } = await pool.query('select id, email, role, created_at from usuarios where id=$1', [uid]); if (!rows.length) throw Object.assign(new Error('not found'), { status:404 }); return rows[0]; }
+  vals.push(uid);
+  const q = `update usuarios set ${sets.join(', ')} where id=$${i} returning id, email, role, created_at`;
+  const { rows } = await pool.query(q, vals);
+  if (!rows.length) throw Object.assign(new Error('not found'), { status: 404 });
+  return rows[0];
+}
+
+export async function deleteUser(id) {
+  const uid = Number(id);
+  if (!usePg) {
+    const db = readFileDB();
+    db.usuarios = db.usuarios || [];
+    const idx = db.usuarios.findIndex(x => x.id === uid);
+    if (idx === -1) throw Object.assign(new Error('not found'), { status: 404 });
+    db.usuarios.splice(idx, 1);
+    writeFileDB(db);
+    return { ok: true };
+  }
+  const { rowCount } = await pool.query('delete from usuarios where id=$1', [uid]);
+  if (!rowCount) throw Object.assign(new Error('not found'), { status: 404 });
+  return { ok: true };
+}

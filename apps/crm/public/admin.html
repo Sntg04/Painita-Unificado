@@ -15,11 +15,17 @@
     .nav a { display:block; color:#333; text-decoration:none; padding:8px 10px; border-radius:8px; font-weight:700; }
     .nav a:hover, .nav a.active { background:#f2e5e8; color:#b00020; }
     .content { flex:1; padding:20px; }
-    h2 { margin:0; font-size:1.125rem; color:#333; }
+  h2 { margin:0 0 8px 0; font-size:1.125rem; color:#333; }
     section { margin:0 0 24px 0; }
     table { border-collapse: collapse; width: 100%; margin-top: 12px; }
     th, td { border: 1px solid #ddd; padding: 8px; font-size: .95rem; }
     th { background: #f7f7f7; text-align: left; }
+  .form-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .input { padding:8px 10px; border:1px solid #ccc; border-radius:8px; }
+  .btn { padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-family:'Nunito', sans-serif; font-weight:700; }
+  .btn.primary { background: var(--primary); color:#fff; }
+  .btn.danger { background: #b00020; color:#fff; opacity:0.9; }
+  .btn.link { background:transparent; color: var(--primary); text-decoration:underline; padding:0; }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,13 +83,101 @@
     <main class="content">
       <section id="usuarios-web">
         <h2>Usuarios Web (Clientes)</h2>
-        <table id="tClientes"><thead><tr><th>ID</th><th>Teléfono</th><th>Creado</th></tr></thead><tbody></tbody></table>
+        <div class="form-row">
+          <input class="input" id="c_phone" placeholder="Teléfono (10 dígitos)" />
+          <input class="input" id="c_pass" placeholder="Contraseña" type="password" />
+          <button class="btn primary" id="c_create">Crear</button>
+        </div>
+        <table id="tClientes"><thead><tr><th>ID</th><th>Teléfono</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
       </section>
       <section id="usuarios-crm">
         <h2>Usuarios CRM (Staff)</h2>
-        <table id="tStaff"><thead><tr><th>ID</th><th>Email</th><th>Rol</th><th>Creado</th></tr></thead><tbody></tbody></table>
+        <div class="form-row">
+          <input class="input" id="u_email" placeholder="Email" />
+          <input class="input" id="u_pass" placeholder="Contraseña" type="password" />
+          <select class="input" id="u_role">
+            <option value="agent">agent</option>
+            <option value="admin">admin</option>
+          </select>
+          <button class="btn primary" id="u_create">Crear</button>
+        </div>
+        <table id="tStaff"><thead><tr><th>ID</th><th>Email</th><th>Rol</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
       </section>
     </main>
   </div>
+  <script>
+    async function api(method, url, body) {
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials:'include', body: body ? JSON.stringify(body) : undefined });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.ok === false) throw new Error(d.error || 'request_failed');
+      return d;
+    }
+    function phoneValid(p) { return /^\d{10}$/.test(String(p||'')); }
+    function renderClientes(list) {
+      const tb = document.querySelector('#tClientes tbody'); tb.innerHTML='';
+      list.forEach(x => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${x.id}</td><td><input class="input c_edit_phone" data-id="${x.id}" value="${x.phone||''}" /></td><td>${x.created_at||''}</td><td><button class="btn" data-action="save" data-id="${x.id}">Guardar</button> <button class="btn danger" data-action="del" data-id="${x.id}">Eliminar</button></td>`;
+        tb.appendChild(tr);
+      });
+    }
+    function renderUsuarios(list) {
+      const tb = document.querySelector('#tStaff tbody'); tb.innerHTML='';
+      list.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.id}</td><td><input class="input u_edit_email" data-id="${u.id}" value="${u.email||''}" /></td><td><select class="input u_edit_role" data-id="${u.id}"><option ${u.role==='agent'?'selected':''} value="agent">agent</option><option ${u.role==='admin'?'selected':''} value="admin">admin</option></select></td><td>${u.created_at||''}</td><td><button class="btn" data-action="saveu" data-id="${u.id}">Guardar</button> <button class="btn danger" data-action="delu" data-id="${u.id}">Eliminar</button></td>`;
+        tb.appendChild(tr);
+      });
+    }
+    async function loadData() {
+      try {
+        const r = await fetch('/admin/data', { credentials:'include' });
+        if (!r.ok) return; const d = await r.json(); if (!d.ok) return;
+        renderClientes(d.clientes||[]);
+        renderUsuarios(d.usuarios||[]);
+      } catch {}
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      // Create client
+      document.getElementById('c_create').addEventListener('click', async () => {
+        const phone = document.getElementById('c_phone').value.trim();
+        const pass = document.getElementById('c_pass').value;
+        if (!phoneValid(phone)) { alert('Teléfono inválido (10 dígitos)'); return; }
+        if (!pass) { alert('Contraseña requerida'); return; }
+        try { await api('POST','/admin/clients',{ phone, password: pass }); document.getElementById('c_phone').value=''; document.getElementById('c_pass').value=''; await loadData(); } catch(e){ alert('No se pudo crear: '+e.message); }
+      });
+      // Save/delete client (event delegation)
+      document.querySelector('#tClientes').addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const action = btn.dataset.action;
+        if (action === 'save') {
+          const phone = document.querySelector(`.c_edit_phone[data-id="${id}"]`).value.trim(); if (!phoneValid(phone)) { alert('Teléfono inválido'); return; }
+          try { await api('PATCH', `/admin/clients/${id}`, { phone }); await loadData(); } catch(e){ alert('No se pudo guardar: '+e.message); }
+        } else if (action === 'del') {
+          if (!confirm('¿Eliminar cliente?')) return; try { await api('DELETE', `/admin/clients/${id}`); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
+        }
+      });
+      // Create user
+      document.getElementById('u_create').addEventListener('click', async () => {
+        const email = document.getElementById('u_email').value.trim();
+        const pass = document.getElementById('u_pass').value;
+        const role = document.getElementById('u_role').value;
+        if (!email) { alert('Email requerido'); return; }
+        if (!pass) { alert('Contraseña requerida'); return; }
+        try { await api('POST','/admin/users',{ email, password: pass, role }); document.getElementById('u_email').value=''; document.getElementById('u_pass').value=''; await loadData(); } catch(e){ alert('No se pudo crear: '+e.message); }
+      });
+      // Save/delete user
+      document.querySelector('#tStaff').addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const action = btn.dataset.action;
+        if (action === 'saveu') {
+          const email = document.querySelector(`.u_edit_email[data-id="${id}"]`).value.trim();
+          const role = document.querySelector(`.u_edit_role[data-id="${id}"]`).value;
+          try { await api('PATCH', `/admin/users/${id}`, { email, role }); await loadData(); } catch(e){ alert('No se pudo guardar: '+e.message); }
+        } else if (action === 'delu') {
+          if (!confirm('¿Eliminar usuario?')) return; try { await api('DELETE', `/admin/users/${id}`); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
+        }
+      });
+      loadData();
+    });
+  </script>
 </body>
 </html>

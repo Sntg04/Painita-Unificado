@@ -5,7 +5,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { calcularValorPrestamo } from '@painita/calc';
-import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin, listUsuarios } from './db.js';
+import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin, listUsuarios, createClient, updateClient, deleteClient, createUser, updateUser, deleteUser } from './db.js';
 import crypto from 'crypto';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -218,6 +218,34 @@ app.get('/admin/data', requireAdmin, async (req, res) => {
     ]);
     res.json({ ok:true, counts, clientes, formularios: forms, usuarios });
   } catch (e) { res.status(500).json({ ok:false, error: 'admin_data_failed' }); }
+});
+
+// Admin CRUD: Clientes (usuarios web)
+app.post('/admin/clients', requireAdmin, async (req, res) => {
+  try { const out = await createClient(req.body||{}); res.json({ ok:true, client: out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'create_failed' }); }
+});
+app.patch('/admin/clients/:id', requireAdmin, async (req, res) => {
+  try { const out = await updateClient(req.params.id, req.body||{}); res.json({ ok:true, client: out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'update_failed' }); }
+});
+app.delete('/admin/clients/:id', requireAdmin, async (req, res) => {
+  try { const out = await deleteClient(req.params.id); res.json({ ok:true, ...out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'delete_failed' }); }
+});
+
+// Admin CRUD: Usuarios (staff)
+app.post('/admin/users', requireAdmin, async (req, res) => {
+  try { const out = await createUser(req.body||{}); res.json({ ok:true, user: out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'create_failed' }); }
+});
+app.patch('/admin/users/:id', requireAdmin, async (req, res) => {
+  try { const out = await updateUser({ id: req.params.id, ...req.body }); res.json({ ok:true, user: out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'update_failed' }); }
+});
+app.delete('/admin/users/:id', requireAdmin, async (req, res) => {
+  try { const out = await deleteUser(req.params.id); res.json({ ok:true, ...out }); }
+  catch (e) { res.status(e.status||500).json({ ok:false, error: e.message||'delete_failed' }); }
 });
 
 // Cliente login (simple)
