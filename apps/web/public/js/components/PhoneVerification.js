@@ -40,21 +40,27 @@ export function PhoneVerification({ onVerified }) {
       // Bloquear botón para evitar múltiples envíos
       if (sendBtn.disabled) return;
       sendBtn.disabled = true;
+      const originalText = sendBtn.textContent;
+      sendBtn.textContent = 'Enviando…';
       // Check if phone already exists
       const chk = await fetch(`/phone/exists?phone=${encodeURIComponent(val)}`);
       const dchk = await chk.json().catch(()=>({}));
       if (chk.ok && dchk.exists) {
         err.innerHTML = "Ya tienes una cuenta, Panita. ¿Deseas iniciar sesión? <a href='/mi-solicitud'>Ir a iniciar sesión</a>";
         sendBtn.disabled = true; // bloquear OTP
+        sendBtn.textContent = originalText;
         return;
       }
       hint.textContent = 'Enviando código...';
       const r = await fetch('/otp/send', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: val }) });
       if (!r.ok) {
         const d = await r.json().catch(()=>({}));
-        err.textContent = d.message || d.error || 'No se pudo enviar el código';
+        const msg = d.message || d.error || 'No se pudo enviar el código';
+        err.textContent = msg;
+        try { alert(msg); } catch {}
         hint.textContent = '';
         sendBtn.disabled = false; // permitir reintento
+        sendBtn.textContent = originalText;
         return;
       }
       hint.textContent = '';
@@ -63,10 +69,13 @@ export function PhoneVerification({ onVerified }) {
   pvOtp.classList.remove('hidden');
   otpPhone.textContent = val;
       otpEl.focus();
+      sendBtn.textContent = originalText;
     } catch (e) {
       err.textContent = 'Error de red al enviar el código';
+      try { alert('Error de red al enviar el código'); } catch {}
       hint.textContent = '';
       sendBtn.disabled = false; // permitir reintento en error
+      try { sendBtn.textContent = 'Enviar código'; } catch {}
     }
   });
   // Permitir corregir el número: volver al panel anterior

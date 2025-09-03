@@ -74,6 +74,7 @@ app.post('/otp/send', async (req, res) => {
     const { phone } = req.body || {};
     if (!phone) return res.status(400).json({ error:'invalid_phone' });
     const full = normalizePhone(phone);
+    console.log('[otp] /otp/send request', { phone: full, dev: isDevOtpEnabled() });
     if (isDevOtpEnabled()) {
       const code = getDevOtpCode();
       console.log(`[otp/mock] sending code ${code} to ${full}`);
@@ -81,7 +82,7 @@ app.post('/otp/send', async (req, res) => {
     }
     const client = getTwilioClient();
     const verifySid = getVerifyServiceSid();
-    if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured' });
+    if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured', message: 'OTP no configurado en el servidor. Define TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_VERIFY_SERVICE_SID o activa OTP_BYPASS=1 para pruebas.' });
 
     const svc = client.verify.v2.services(verifySid);
     const resp = await svc.verifications.create({ to: full, channel: 'sms' });
@@ -98,13 +99,14 @@ app.post('/otp/verify', async (req, res) => {
     const { phone, code } = req.body || {};
     if (!phone || !code) return res.status(400).json({ error:'invalid_input' });
     const full = normalizePhone(phone);
+    console.log('[otp] /otp/verify request', { phone: full, dev: isDevOtpEnabled() });
     if (isDevOtpEnabled()) {
       if (String(code).trim() === getDevOtpCode()) return res.json({ ok: true });
       return res.status(400).json({ error: 'invalid_otp', reason: 'mock_code_mismatch' });
     }
     const client = getTwilioClient();
     const verifySid = getVerifyServiceSid();
-    if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured' });
+    if (!client || !verifySid) return res.status(500).json({ error:'twilio_verify_not_configured', message: 'OTP no configurado en el servidor. Define TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_VERIFY_SERVICE_SID o activa OTP_BYPASS=1 para pruebas.' });
 
     const svc = client.verify.v2.services(verifySid);
     const resp = await svc.verificationChecks.create({ to: full, code: String(code).trim() });
@@ -114,6 +116,17 @@ app.post('/otp/verify', async (req, res) => {
     console.error('[otp] verify error:', e);
     res.status(500).json({ error:'verify_failed', code: e?.code, status: e?.status, message: e?.message || String(e) });
   }
+});
+
+// Quick OTP health/config check for troubleshooting on Render
+app.get('/otp/health', (req, res) => {
+  const hasTwilio = !!getTwilioClient() && !!getVerifyServiceSid();
+  res.json({
+    ok: true,
+    mode: isDevOtpEnabled() ? 'mock' : (hasTwilio ? 'twilio' : 'disabled'),
+    hasTwilio,
+    defaultCountry: process.env.DEFAULT_COUNTRY_CODE || '+57'
+  });
 });
 
 // friendly route for static pages
