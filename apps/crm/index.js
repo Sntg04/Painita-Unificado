@@ -5,7 +5,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { calcularValorPrestamo } from '@painita/calc';
-import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin, listUsuarios, createClient, updateClient, deleteClient, createUser, updateUser, deleteUser } from './db.js';
+import { init, createSolicitud, updateStep, listSolicitudes, setDecision, getSolicitud as getSol, isPgEnabled, startFormularioForPhone, updateFormularioStep, getFormulario, phoneExists, getCounts, recentClientes, recentFormularios, loginCliente, loginAdmin, listUsuarios, createClient, updateClient, deleteClient, createUser, updateUser, deleteUser, createFormularioAdmin, updateFormularioAdmin, deleteFormularioAdmin } from './db.js';
 import crypto from 'crypto';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -218,6 +218,28 @@ app.get('/admin/data', requireAdmin, async (req, res) => {
     ]);
     res.json({ ok:true, counts, clientes, formularios: forms, usuarios });
   } catch (e) { res.status(500).json({ ok:false, error: 'admin_data_failed' }); }
+});
+
+// Admin CRUD: Formularios
+app.post('/admin/forms', requireAdmin, async (req, res) => {
+  try {
+    const { phone, monto, plazo, password } = req.body || {};
+    if (!phone) return res.status(400).json({ ok:false, error: 'phone_required' });
+    const f = await createFormularioAdmin({ phone, monto, plazo, password });
+    res.json({ ok:true, formulario: f });
+  } catch (e) { res.status(e.status||500).json({ ok:false, error: e.message || 'create_failed' }); }
+});
+app.patch('/admin/forms/:id', requireAdmin, async (req, res) => {
+  try {
+    const f = await updateFormularioAdmin(req.params.id, req.body || {});
+    res.json({ ok:true, formulario: f });
+  } catch (e) { res.status(e.status||500).json({ ok:false, error: e.message || 'update_failed' }); }
+});
+app.delete('/admin/forms/:id', requireAdmin, async (req, res) => {
+  try {
+    const r = await deleteFormularioAdmin(req.params.id);
+    res.json({ ok:true, ...r });
+  } catch (e) { res.status(e.status||500).json({ ok:false, error: e.message || 'delete_failed' }); }
 });
 
 // Admin CRUD: Clientes (usuarios web)

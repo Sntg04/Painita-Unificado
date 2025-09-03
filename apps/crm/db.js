@@ -388,6 +388,56 @@ export async function getCounts() {
   return { storage: 'pg', clientes: c1[0].n, formularios: c2[0].n, solicitudes: c3[0].n, usuarios: c4[0].n };
 }
 
+// Admin CRUD for formularios
+export async function createFormularioAdmin({ phone, monto, plazo, password }) {
+  // Reuse existing helper which ensures cliente exists and inserts formulario
+  return await startFormularioForPhone({ phone, monto, plazo, password });
+}
+
+export async function updateFormularioAdmin(id, data = {}) {
+  const fid = Number(id);
+  const allowed = ['celular','monto','plazo','paso_actual','estado'];
+  if (!usePg) {
+    const db = readFileDB();
+    const s = db.solicitudes.find(x => x.id === fid);
+    if (!s || !s.step_data?.formulario) throw Object.assign(new Error('not found'), { status: 404 });
+    const f = s.step_data.formulario;
+    allowed.forEach(k => { if (k in data) f[k] = data[k]; });
+    s.step_data.formulario = f;
+    writeFileDB(db);
+    return f;
+  }
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  allowed.forEach(k => { if (k in data) { sets.push(`${k} = $${i++}`); vals.push(data[k]); } });
+  if (!sets.length) {
+    const { rows } = await pool.query('select * from formularios where id=$1', [fid]);
+    if (!rows.length) throw Object.assign(new Error('not found'), { status:404 });
+    return rows[0];
+  }
+  vals.push(fid);
+  const q = `update formularios set ${sets.join(', ')} where id=$${i} returning *`;
+  const { rows } = await pool.query(q, vals);
+  if (!rows.length) throw Object.assign(new Error('not found'), { status: 404 });
+  return rows[0];
+}
+
+export async function deleteFormularioAdmin(id) {
+  const fid = Number(id);
+  if (!usePg) {
+    const db = readFileDB();
+    const s = db.solicitudes.find(x => x.id === fid);
+    if (!s || !s.step_data?.formulario) throw Object.assign(new Error('not found'), { status: 404 });
+    delete s.step_data.formulario;
+    writeFileDB(db);
+    return { ok: true };
+  }
+  const { rowCount } = await pool.query('delete from formularios where id=$1', [fid]);
+  if (!rowCount) throw Object.assign(new Error('not found'), { status: 404 });
+  return { ok: true };
+}
+
 // Recent lists for quick admin view
 export async function recentClientes(limit = 20) {
   const lim = Math.max(1, Math.min(200, Number(limit)||20));
@@ -414,12 +464,12 @@ export async function recentFormularios(limit = 20) {
     const arr = [];
     for (const s of db.solicitudes) {
       const f = s.step_data?.formulario;
-      if (f) arr.push({ id: f.id, celular: f.celular, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at });
+      if (f) arr.push({ id: f.id, celular: f.celular, monto: f.monto ?? null, plazo: f.plazo ?? null, paso_actual: f.paso_actual, estado: f.estado || 'pendiente', created_at: s.created_at });
     }
     arr.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
     return arr.slice(0, lim);
   }
-  const { rows } = await pool.query('select id, celular, paso_actual, estado, created_at from formularios order by id desc limit $1', [lim]);
+  const { rows } = await pool.query('select id, celular, monto, plazo, paso_actual, estado, created_at from formularios order by id desc limit $1', [lim]);
   return rows;
 }
 

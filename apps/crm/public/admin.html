@@ -116,7 +116,14 @@
       </section>
       <section id="formularios">
         <h2>Formularios</h2>
-        <table id="tForms"><thead><tr><th>ID</th><th>Celular</th><th>Paso</th><th>Estado</th><th>Creado</th></tr></thead><tbody></tbody></table>
+        <div class="form-row">
+          <input class="input" id="f_phone" placeholder="Teléfono (10 dígitos)" />
+          <input class="input" id="f_monto" placeholder="Monto" type="number" />
+          <input class="input" id="f_plazo" placeholder="Plazo (meses)" type="number" />
+          <input class="input" id="f_pass" placeholder="Contraseña (si crea cliente)" type="password" />
+          <button class="btn primary" id="f_create">Crear</button>
+        </div>
+        <table id="tForms"><thead><tr><th>ID</th><th>Celular</th><th>Monto</th><th>Plazo</th><th>Paso</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
       </section>
     </main>
   </div>
@@ -144,22 +151,30 @@
         tb.appendChild(tr);
       });
     }
+    function renderFormularios(list) {
+      const tb = document.querySelector('#tForms tbody'); tb.innerHTML='';
+      list.forEach(x => {
+        const tr = document.createElement('tr');
+        const estado = x.estado || 'pendiente';
+        const paso = Number(x.paso_actual||0);
+        tr.innerHTML = `<td>${x.id}</td>
+          <td><input class="input f_edit_phone" data-id="${x.id}" value="${x.celular||''}" /></td>
+          <td><input class="input f_edit_monto" type="number" data-id="${x.id}" value="${x.monto ?? ''}" /></td>
+          <td><input class="input f_edit_plazo" type="number" data-id="${x.id}" value="${x.plazo ?? ''}" /></td>
+          <td><input class="input f_edit_paso" type="number" min="0" max="7" data-id="${x.id}" value="${paso}" /></td>
+          <td><select class="input f_edit_estado" data-id="${x.id}"><option ${estado==='pendiente'?'selected':''} value="pendiente">pendiente</option><option ${estado==='en_espera'?'selected':''} value="en_espera">en_espera</option><option ${estado==='aprobado'?'selected':''} value="aprobado">aprobado</option><option ${estado==='rechazado'?'selected':''} value="rechazado">rechazado</option></select></td>
+          <td>${x.created_at||''}</td>
+          <td><button class="btn" data-action="savef" data-id="${x.id}">Guardar</button> <button class="btn danger" data-action="delf" data-id="${x.id}">Eliminar</button></td>`;
+        tb.appendChild(tr);
+      });
+    }
     async function loadData() {
       try {
         const r = await fetch('/admin/data', { credentials:'include' });
         if (!r.ok) return; const d = await r.json(); if (!d.ok) return;
-        renderClientes(d.clientes||[]);
-        renderUsuarios(d.usuarios||[]);
-        const bf = document.querySelector('#tForms tbody');
-        if (bf) {
-          bf.innerHTML = '';
-          (d.formularios||[]).forEach(x => {
-            const tr = document.createElement('tr');
-            const estado = x.estado || 'pendiente';
-            tr.innerHTML = `<td>${x.id}</td><td>${x.celular||''}</td><td>${x.paso_actual||0}</td><td>${estado}</td><td>${x.created_at||''}</td>`;
-            bf.appendChild(tr);
-          });
-        }
+  renderClientes(d.clientes||[]);
+  renderUsuarios(d.usuarios||[]);
+  renderFormularios(d.formularios||[]);
       } catch {}
     }
     window.addEventListener('DOMContentLoaded', () => {
@@ -199,6 +214,31 @@
           try { await api('PATCH', `/admin/users/${id}`, { email, role }); await loadData(); } catch(e){ alert('No se pudo guardar: '+e.message); }
         } else if (action === 'delu') {
           if (!confirm('¿Eliminar usuario?')) return; try { await api('DELETE', `/admin/users/${id}`); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
+        }
+      });
+      // Create formulario
+      document.getElementById('f_create').addEventListener('click', async () => {
+        const phone = document.getElementById('f_phone').value.trim();
+        const monto = Number(document.getElementById('f_monto').value || 0) || undefined;
+        const plazo = Number(document.getElementById('f_plazo').value || 0) || undefined;
+        const pass = document.getElementById('f_pass').value;
+        if (!phoneValid(phone)) { alert('Teléfono inválido'); return; }
+        try { await api('POST','/admin/forms',{ phone, monto, plazo, password: pass }); document.getElementById('f_phone').value=''; document.getElementById('f_monto').value=''; document.getElementById('f_plazo').value=''; document.getElementById('f_pass').value=''; await loadData(); }
+        catch(e){ alert('No se pudo crear: '+e.message); }
+      });
+      // Save/delete formulario (delegation)
+      document.querySelector('#tForms').addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const action = btn.dataset.action;
+        if (action === 'savef') {
+          const celular = document.querySelector(`.f_edit_phone[data-id="${id}"]`).value.trim();
+          const monto = Number(document.querySelector(`.f_edit_monto[data-id="${id}"]`).value || 0) || undefined;
+          const plazo = Number(document.querySelector(`.f_edit_plazo[data-id="${id}"]`).value || 0) || undefined;
+          const paso_actual = Number(document.querySelector(`.f_edit_paso[data-id="${id}"]`).value || 0) || 0;
+          const estado = document.querySelector(`.f_edit_estado[data-id="${id}"]`).value;
+          if (!phoneValid(celular)) { alert('Teléfono inválido'); return; }
+          try { await api('PATCH', `/admin/forms/${id}`, { celular, monto, plazo, paso_actual, estado }); await loadData(); } catch(e){ alert('No se pudo guardar: '+e.message); }
+        } else if (action === 'delf') {
+          if (!confirm('¿Eliminar formulario?')) return; try { await api('DELETE', `/admin/forms/${id}`); await loadData(); } catch(e){ alert('No se pudo eliminar: '+e.message); }
         }
       });
       loadData();
