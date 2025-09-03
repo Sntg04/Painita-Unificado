@@ -408,7 +408,8 @@ export async function createFormularioAdmin({ phone, monto, plazo, password }) {
 
 export async function updateFormularioAdmin(id, data = {}) {
   const fid = Number(id);
-  const allowed = ['celular','monto','plazo','paso_actual','estado'];
+  // Allow updating any formulario column defined in FORM_COLUMNS
+  const allowed = FORM_COLUMNS;
   if (!usePg) {
     const db = readFileDB();
     const s = db.solicitudes.find(x => x.id === fid);
