@@ -14,7 +14,8 @@ import twilio from 'twilio';
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors());
-app.use(bodyParser.json());
+// Allow larger JSON bodies for image data URLs from form step 6
+app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 // Avoid favicon 404 noise
 app.get('/favicon.ico', (req, res) => res.status(204).end());

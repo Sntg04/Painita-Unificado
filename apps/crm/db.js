@@ -85,9 +85,9 @@ export async function init() {
       account_number varchar(30),
       account_number_confirm varchar(30),
       -- Paso 6: Archivos
-      id_front varchar(255),
-      id_back varchar(255),
-      selfie varchar(255),
+  id_front text,
+  id_back text,
+  selfie text,
       created_at timestamptz not null default now(),
       estado varchar(30) default 'pendiente'
     );

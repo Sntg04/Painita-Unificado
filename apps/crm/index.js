@@ -11,7 +11,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+// Accept larger JSON payloads (photos as data URLs)
+app.use(bodyParser.json({ limit: '10mb' }));
 // Note: static is registered AFTER our friendly routes so they take precedence
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
