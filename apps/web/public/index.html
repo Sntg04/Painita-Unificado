@@ -114,7 +114,25 @@
       } else if (state.fase === 'celular') {
         const center = document.createElement('div');
         center.className = 'center-screen';
-        center.appendChild(PhoneVerification({ onVerified: (phone, otp)=>{ state.celular = phone; state.otp = otp; state.fase = 'password'; render(); } }));
+        center.appendChild(PhoneVerification({
+          onVerified: (phone, otp) => { state.celular = phone; state.otp = otp; state.fase = 'password'; render(); },
+          onLogin: async (phone, form) => {
+            state.celular = phone;
+            if (form && form.id) {
+              // Resumir formulario existente
+              state.formId = form.id;
+              state.formData = form;
+              const paso = Number(form.paso_actual || 1);
+              state.formStep = Math.min(7, Math.max(1, paso));
+              state.fase = 'form';
+              render();
+            } else {
+              // No hay formulario, continuar con contraseña para crear uno
+              state.fase = 'password';
+              render();
+            }
+          }
+        }));
         sections.push(center);
       } else if (state.fase === 'password') {
         // Minimal password capture inline to avoid a framework

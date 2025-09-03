@@ -249,6 +249,20 @@ app.get('/phone/exists', async (req, res) => {
   }
 });
 
+// Login de cliente (para reanudar formulario existente)
+app.post('/clientes/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body || {};
+    if (!phone || !password) return res.status(400).json({ ok:false, error:'phone_password_required' });
+    const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/clientes/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, password }) });
+    console.log('[web] /clientes/login → CRM', r.status);
+    res.status(r.status).json(d);
+  } catch (e) {
+    console.error('[web] /clientes/login proxy error:', e?.message || e);
+    res.status(502).json({ ok:false, error:'bad_gateway', message:'No se pudo contactar al CRM' });
+  }
+});
+
 // Crear solicitud (después de teléfono+otp+password) con timeout y manejo de errores
 app.post('/start', async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-export function PhoneVerification({ onVerified }) {
+export function PhoneVerification({ onVerified, onLogin }) {
   const wrap = document.createElement('div');
   wrap.className = 'card card-center phone-card';
   wrap.innerHTML = `
@@ -6,7 +6,12 @@ export function PhoneVerification({ onVerified }) {
       <h3 class="card__title">Ingresa tu número de celular</h3>
       <input class="input" placeholder="Celular" maxlength="10" />
       <button class="btn btn-primary send">Enviar código</button>
-  <div class="signin-hint">¿Ya tienes cuenta? <a class="signin-link" href="/mi-solicitud">Inicia sesión</a></div>
+  <div class="signin-hint">¿Ya tienes cuenta? Inicia sesión para continuar</div>
+  <div class="login-inline hidden">
+    <input class="input login-pass" type="password" placeholder="Tu contraseña" />
+    <button class="btn" type="button" class="login-btn">Iniciar sesión</button>
+    <div class="login-error" style="color:#b00020; font-size:0.95rem;"></div>
+  </div>
     </div>
     <div class="hint"></div>
     <div class="pv-otp hidden">
@@ -26,6 +31,10 @@ export function PhoneVerification({ onVerified }) {
   const pvTop = wrap.querySelector('.pv-top');
   const pvOtp = wrap.querySelector('.pv-otp');
   const sendBtn = wrap.querySelector('.send');
+  const loginWrap = wrap.querySelector('.login-inline');
+  const loginPass = wrap.querySelector('.login-pass');
+  const loginErr = wrap.querySelector('.login-error');
+  const loginBtn = loginWrap?.querySelector('button');
   const otpEl = wrap.querySelector('.otp');
   const otpPhone = wrap.querySelector('.otp-phone');
   const otpEdit = wrap.querySelector('.otp-edit');
@@ -46,8 +55,37 @@ export function PhoneVerification({ onVerified }) {
       const chk = await fetch(`/phone/exists?phone=${encodeURIComponent(val)}`);
       const dchk = await chk.json().catch(()=>({}));
       if (chk.ok && dchk.exists) {
-        err.innerHTML = "Ya tienes una cuenta, Panita. ¿Deseas iniciar sesión? <a href='/mi-solicitud'>Ir a iniciar sesión</a>";
-        sendBtn.disabled = true; // bloquear OTP
+        // Mostrar login inline para reanudar
+        err.textContent = '';
+        loginErr.textContent = '';
+        loginWrap.classList.remove('hidden');
+        if (loginBtn && !loginBtn._bound) {
+          loginBtn._bound = true;
+          loginBtn.addEventListener('click', async () => {
+            const pass = loginPass.value || '';
+            if (!pass) { loginErr.textContent = 'Ingresa tu contraseña'; return; }
+            loginErr.textContent = '';
+            try {
+              loginBtn.disabled = true;
+              const r = await fetch('/clientes/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone: val, password: pass }) });
+              const d = await r.json().catch(()=>({}));
+              loginBtn.disabled = false;
+              if (!r.ok) {
+                if (r.status === 401) { loginErr.textContent = 'Contraseña incorrecta'; return; }
+                if (r.status === 404) { loginErr.textContent = 'Usuario no encontrado'; return; }
+                loginErr.textContent = d?.error || 'No se pudo iniciar sesión'; return;
+              }
+              // Exitoso: si hay formulario, reanudar; si no, avisar al caller para iniciar
+              const form = d?.formulario || null;
+              onLogin?.(val, form);
+            } catch (e) {
+              loginErr.textContent = 'Error de red';
+              loginBtn.disabled = false;
+            }
+          });
+        }
+        // Evitar envío de OTP en este caso
+        sendBtn.disabled = false;
         sendBtn.textContent = originalText;
         return;
       }
