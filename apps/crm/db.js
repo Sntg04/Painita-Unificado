@@ -354,10 +354,15 @@ export async function updateFormularioStep(id, { step, data }) {
     }
     writeFileDB(db); return { ok:true, id: Number(id), paso_actual: step };
   }
-  const keys = Object.keys(data || {}).filter(k => FORM_COLUMNS.includes(k));
+  const payload = { ...(data||{}) };
+  if ('estado' in payload) {
+    const raw = String(payload.estado||'').toLowerCase();
+    payload.estado = (raw === 'rechazado') ? 'negado' : raw;
+  }
+  const keys = Object.keys(payload || {}).filter(k => FORM_COLUMNS.includes(k));
   const sets = [];
   const vals = [];
-  keys.forEach((k, i) => { sets.push(`${k} = $${i+1}`); vals.push(data[k]); });
+  keys.forEach((k, i) => { sets.push(`${k} = $${i+1}`); vals.push(payload[k]); });
   // paso_actual al final
   const idxPaso = vals.length + 1; vals.push(Number(step)||0);
   const idxId = vals.length + 1; vals.push(Number(id));
@@ -410,6 +415,13 @@ export async function updateFormularioAdmin(id, data = {}) {
   const fid = Number(id);
   // Allow updating any formulario column defined in FORM_COLUMNS
   const allowed = FORM_COLUMNS;
+  // Normalize/validate estado if present
+  if (data && 'estado' in data) {
+    const raw = String(data.estado||'').toLowerCase();
+    const norm = raw === 'rechazado' ? 'negado' : raw;
+    const ok = ['pendiente','en_espera','aprobado','negado'];
+    if (!ok.includes(norm)) delete data.estado; else data.estado = norm;
+  }
   if (!usePg) {
     const db = readFileDB();
     const s = db.solicitudes.find(x => x.id === fid);

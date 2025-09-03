@@ -173,7 +173,7 @@
       const tb = document.querySelector('#tForms tbody'); tb.innerHTML='';
       list.forEach(x => {
         const tr = document.createElement('tr');
-        const estado = x.estado || 'pendiente';
+  const estado = (String(x.estado||'pendiente').toLowerCase() === 'rechazado') ? 'negado' : (x.estado || 'pendiente');
         tr.innerHTML = `<td>${x.id}</td>
           <td>${fullName(x)}</td>
           <td>${x.celular||''}</td>
@@ -274,12 +274,13 @@
             const d = await api('GET', `/formularios/${id}`);
             const x = d; currentFormId = id;
             fmTitle.textContent = `Formulario #${id}`;
+            const estadoVal = (String(x.estado||'pendiente').toLowerCase()==='rechazado') ? 'negado' : (x.estado || 'pendiente');
             fmBody.innerHTML = [
               field('Celular', x.celular, 'celular'),
               field('Monto', x.monto, 'monto'),
               field('Plazo', x.plazo, 'plazo'),
               field('Paso actual', x.paso_actual, 'paso_actual'),
-              selectField('Estado', x.estado || 'pendiente', 'estado', ['pendiente','en_espera','aprobado','rechazado']),
+              selectField('Estado', estadoVal, 'estado', ['pendiente','en_espera','aprobado','negado']),
               field('Primer nombre', x.first_name, 'first_name'),
               field('Segundo nombre', x.second_name, 'second_name'),
               field('Primer apellido', x.last_name, 'last_name'),
