@@ -47,6 +47,31 @@
     };
 
     const API = location.origin;
+    const POLL_MS = 8000; // intervalo de sondeo de estado
+    let estadoPoll = null;
+
+    function startEstadoPolling() {
+      if (estadoPoll) return;
+      estadoPoll = setInterval(async () => {
+        if (!state.formId) return;
+        try {
+          await loadFormulario();
+          const est = String(state?.formData?.estado||'').toLowerCase();
+          if (est !== 'aprobado') {
+            stopEstadoPolling();
+            // Cambió el estado (p.ej., a desembolsado)
+            render();
+          }
+        } catch {}
+      }, POLL_MS);
+    }
+
+    function stopEstadoPolling() {
+      if (estadoPoll) {
+        clearInterval(estadoPoll);
+        estadoPoll = null;
+      }
+    }
 
   // Auto-resume from localStorage (when coming from /login-we login)
     try {
@@ -485,18 +510,46 @@
         // Desglose con el mismo componente visual del home
         const breakdown = BreakdownPanel({ desglose: desg });
         const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
-        // Botón al final
-        const acceptBtn = document.createElement('button'); acceptBtn.className = 'btn btn-primary'; acceptBtn.textContent = 'Aceptar préstamo';
-        acceptBtn.style.marginTop = '12px'; acceptBtn.style.width = '100%';
-  acceptBtn.addEventListener('click', async () => {
-          acceptBtn.disabled = true;
-          try {
-            const r = await fetch(`${API}/form/${state.formId}/accept`, { method: 'PATCH' });
-            // Aceptación persistida (ignoramos respuesta exacta)
-            alert('de 5-10 minutos tendras el dinero en tu cuenta gracias por elegir painita');
-          } catch {}
-        });
-  card.append(h, summary, breakdown, dueP, acceptBtn);
+        const accepted = String(f?.cliente_acepto||'').toLowerCase() === 'si';
+        const infoWrap = document.createElement('div');
+        const errEl = document.createElement('div'); errEl.className='error'; errEl.style.marginTop='8px';
+        if (!accepted) {
+          // Botón aceptar: cambia a vista de espera de desembolso
+          const acceptBtn = document.createElement('button'); acceptBtn.className = 'btn btn-primary'; acceptBtn.textContent = 'Aceptar préstamo';
+          acceptBtn.style.marginTop = '12px'; acceptBtn.style.width = '100%';
+          acceptBtn.addEventListener('click', async () => {
+            acceptBtn.disabled = true; errEl.textContent='';
+            try {
+              await fetch(`${API}/form/${state.formId}/accept`, { method: 'PATCH' });
+              // Refrescar datos y mostrar vista persistente
+              try { await loadFormulario(); } catch {}
+              state.formData = Object.assign({}, state.formData, { cliente_acepto: 'si' });
+              render();
+            } catch (e) {
+              acceptBtn.disabled = false;
+              errEl.textContent = 'No se pudo registrar tu aceptación. Intenta de nuevo.';
+            }
+          });
+          card.append(h, summary, breakdown, dueP, acceptBtn, errEl);
+        } else {
+          // Vista persistente de aceptación mientras cambia el estado
+          const waitMsg = document.createElement('p');
+          waitMsg.textContent = 'Estamos preparando tu desembolso. En 5 a 10 minutos tendrás el dinero en tu cuenta. Gracias por elegir Painita.';
+          waitMsg.style.marginTop = '8px';
+          // Indicador sencillo
+          const spinner = document.createElement('div');
+          spinner.textContent = 'Procesando…';
+          spinner.style.opacity = '0.8'; spinner.style.fontSize = '0.95rem';
+          const hint = document.createElement('p');
+          hint.textContent = 'Puedes permanecer en esta página. Actualizaremos automáticamente cuando el estado cambie.';
+          hint.style.color = '#666'; hint.style.fontSize = '0.9rem';
+          infoWrap.append(waitMsg, spinner, hint);
+          // Iniciar sondeo de estado hasta que deje de ser aprobado
+          startEstadoPolling();
+          card.append(h, summary, breakdown, dueP, infoWrap);
+        }
+        // Si salimos de esta fase, detener polling
+        setTimeout(() => { if (state.fase !== 'aprobado') stopEstadoPolling(); }, 0);
         const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
       } else if (state.fase === 'desembolsado') {
         const card = document.createElement('div'); card.className='card card-center';
