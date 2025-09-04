@@ -36,7 +36,7 @@
     const state = {
       monto: 300000,
       plazo: 30,
-  fase: 'calculadora', // 'calculadora' | 'celular' | 'password' | 'form' | 'final' | 'aprobado'
+  fase: 'calculadora', // 'calculadora' | 'celular' | 'password' | 'form' | 'final' | 'aprobado' | 'desembolsado'
       celular: '',
       otp: '',
   password: '',
@@ -95,8 +95,12 @@
       const r = await fetch(API + '/form/' + state.formId);
       const d = await r.json();
       state.formData = d;
-      if (String(d?.estado||'').toLowerCase() === 'aprobado') {
+      const est = String(d?.estado||'').toLowerCase();
+      if (est === 'aprobado') {
         state.fase = 'aprobado';
+        return d;
+      } else if (est === 'desembolsado') {
+        state.fase = 'desembolsado';
         return d;
       }
       if (typeof d?.paso_actual === 'number') {
@@ -152,8 +156,11 @@
               state.formData = form;
               const paso = Number(form.paso_actual || 1);
               // Si está aprobado, ir a resumen de aprobado
-              if (String(form.estado||'').toLowerCase() === 'aprobado') {
+              const est = String(form.estado||'').toLowerCase();
+              if (est === 'aprobado') {
                 state.fase = 'aprobado';
+              } else if (est === 'desembolsado') {
+                state.fase = 'desembolsado';
               } else {
                 state.formStep = Math.min(7, Math.max(1, paso));
                 state.fase = 'form';
@@ -490,6 +497,41 @@
           } catch {}
         });
   card.append(h, summary, breakdown, dueP, acceptBtn);
+        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+      } else if (state.fase === 'desembolsado') {
+        const card = document.createElement('div'); card.className='card card-center';
+        const h = document.createElement('h3'); h.className='card__title'; h.textContent = 'Tu crédito ha sido desembolsado';
+        const f = state.formData || {};
+        const monto = Number(f.monto||0);
+        const plazo = Number(f.plazo||0);
+        const desg = calcularDesglose(monto, plazo);
+        // Fecha de pago
+        const due = new Date(); due.setDate(due.getDate() + (plazo||0));
+        const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
+        // Resumen
+        const summary = document.createElement('div');
+        summary.style.display = 'grid'; summary.style.gridTemplateColumns = '1fr 1fr'; summary.style.gap = '8px';
+        const row = (label, value) => { const r = document.createElement('div'); r.className='row between'; const l=document.createElement('span'); l.textContent=label; const v=document.createElement('strong'); v.textContent=value; r.append(l,v); return r; };
+        summary.append(
+          row('Monto desembolsado', monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })),
+          row('Plazo', `${plazo} días`),
+          row('Fecha de pago', dueStr)
+        );
+        const breakdown = BreakdownPanel({ desglose: desg });
+        const total = document.createElement('p'); total.style.fontWeight='800'; total.textContent = `Total a pagar: ${desg.totalPagar.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
+        // Botón Tumipay
+        const payBtn = document.createElement('button'); payBtn.className='btn btn-primary'; payBtn.textContent='Pagar'; payBtn.style.width='100%'; payBtn.style.marginTop='12px';
+        const linkWrap = document.createElement('div'); linkWrap.style.marginTop='8px'; const linkA = document.createElement('a'); linkA.target='_blank'; linkA.rel='noopener'; linkWrap.append('Link de pago: ', linkA);
+        payBtn.addEventListener('click', async ()=>{
+          if (!state.solicitudId) { alert('No hay solicitud'); return; }
+          try {
+            const body = { monto: Math.round(desg.totalPagar), plazoMeses: 12, tasa: 24 };
+            const r = await fetch(`${API}/payment-link/${state.solicitudId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const d = await r.json();
+            if (d && d.link) { linkA.href = d.link; linkA.textContent = d.link; }
+          } catch {}
+        });
+        card.append(h, summary, breakdown, total, payBtn, linkWrap);
         const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
       }
 

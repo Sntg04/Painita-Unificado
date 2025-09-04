@@ -439,7 +439,7 @@ export async function updateFormularioAdmin(id, data = {}) {
   if (data && 'estado' in data) {
     const raw = String(data.estado||'').toLowerCase();
     const norm = raw === 'rechazado' ? 'negado' : raw;
-    const ok = ['pendiente','en_espera','aprobado','negado'];
+  const ok = ['pendiente','en_espera','aprobado','desembolsado','negado'];
     if (!ok.includes(norm)) delete data.estado; else data.estado = norm;
   }
   if (!usePg) {
