@@ -6,6 +6,7 @@ import cors from 'cors';
 import { calcularValorPrestamo } from '@painita/calc';
 import { CRMClient } from '@painita/crm-client';
 import { createTumipayPayment } from '@painita/tumipay';
+import { calcularDesglose } from './public/js/utils/finanzas.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -372,10 +373,20 @@ app.get('/crm/health', async (req, res) => {
 // Generar link de pago Tumipay (mock)
 app.post('/payment-link/:id', async (req, res) => {
   const { id } = req.params;
-  const { monto, plazoMeses, tasa } = req.body;
-  const cuota = calcularValorPrestamo(monto, plazoMeses, tasa);
-  const { link } = await createTumipayPayment({ id, amount: monto, installment: cuota, apiKey: process.env.TUMIPAY_KEY, apiBase: process.env.TUMIPAY_BASE });
-  res.json({ link, cuota });
+  const { monto, plazoMeses, tasa, plazoDias } = req.body;
+  // Calcular cuota si aplica y total con nuestro desglose
+  const cuota = (monto && plazoMeses && tasa) ? calcularValorPrestamo(monto, plazoMeses, tasa) : null;
+  const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
+  const { link } = await createTumipayPayment({
+    id,
+    amount: total,
+    installment: cuota || undefined,
+    apiKey: process.env.TUMIPAY_KEY,
+    apiBase: process.env.TUMIPAY_BASE,
+    username: process.env.TUMIPAY_USER,
+    password: process.env.TUMIPAY_PASS
+  });
+  res.json({ link, cuota, total });
 });
 
 const PORT = process.env.PORT || 4000;

@@ -522,10 +522,10 @@
         // Botón Tumipay
         const payBtn = document.createElement('button'); payBtn.className='btn btn-primary'; payBtn.textContent='Pagar'; payBtn.style.width='100%'; payBtn.style.marginTop='12px';
         const linkWrap = document.createElement('div'); linkWrap.style.marginTop='8px'; const linkA = document.createElement('a'); linkA.target='_blank'; linkA.rel='noopener'; linkWrap.append('Link de pago: ', linkA);
-        payBtn.addEventListener('click', async ()=>{
+    payBtn.addEventListener('click', async ()=>{
           if (!state.solicitudId) { alert('No hay solicitud'); return; }
           try {
-            const body = { monto: Math.round(desg.totalPagar), plazoMeses: 12, tasa: 24 };
+      const body = { monto: Math.round(desg.totalPagar), plazoDias: plazo };
             const r = await fetch(`${API}/payment-link/${state.solicitudId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const d = await r.json();
             if (d && d.link) { linkA.href = d.link; linkA.textContent = d.link; }
