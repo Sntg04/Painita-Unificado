@@ -2,7 +2,7 @@ Painita Unificado (POC)
 
 Contenido
 - apps/crm: mini CRM (JSON storage) con endpoints y UI admin.
-- apps/web: servidor demo con UI para iniciar solicitud, sincronizar pasos y generar link Tumipay (mock).
+- apps/web: servidor demo con UI para iniciar solicitud, sincronizar pasos y generar link Tumipay.
 - packages/calc: calculadora de cuota compartida.
 - packages/crm-client: cliente CRM (SDK) para consumir los endpoints.
 
@@ -17,7 +17,13 @@ Cómo correr
    - PowerShell:
      - cd .\apps\web
      - npm install --no-audit --no-fund
-     - $env:CRM_BASE='http://localhost:4001'; node server.js
+       - Configura credenciales Tumipay (opcional en dev):
+          - $env:TUMIPAY_BASE='https://transactions.topup.com.co/production'
+          - $env:TUMIPAY_KEY='TU_TOKEN_O_APIKEY'
+          - # o usuario/clave básicos
+          - $env:TUMIPAY_USER='usuario'
+          - $env:TUMIPAY_PASS='clave'
+       - $env:CRM_BASE='http://localhost:4001'; node server.js
    - Abre http://localhost:4000
 
 Usar tus vistas originales como página principal (LEGACY)
@@ -35,6 +41,6 @@ Prueba rápida E2E
    - node .\scripts\e2e.js
 
 Notas
-- El link de Tumipay es mock. Sustituir por API real.
+- Tumipay: si no configuras TUMIPAY_BASE, se usará un link mock local; si configuras TUMIPAY_BASE pero la API falla, verás error de generación de link.
 - El CRM usa JSON; migrar a DB real cuando se integre con Painita-CRM.
 - Seguridad/autenticación no incluida en este POC.

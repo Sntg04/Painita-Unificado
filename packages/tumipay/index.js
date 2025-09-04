@@ -40,6 +40,6 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
       if (link) return { link };
     } catch {}
   }
-  // As a last resort, return a mock link
-  return { link: buildPaymentLink({ id, amount, installment }) };
+  // Base configurada pero no se pudo obtener link
+  throw new Error('tumipay_link_failed');
 }
