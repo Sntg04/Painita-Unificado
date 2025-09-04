@@ -398,7 +398,7 @@ app.post('/payment-link/:id', async (req, res) => {
   const cuota = (monto && plazoMeses && tasa) ? calcularValorPrestamo(monto, plazoMeses, tasa) : null;
   const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
   try {
-    const { link } = await createTumipayPayment({
+  const payload = {
       id,
       amount: total,
       installment: cuota || undefined,
@@ -406,7 +406,9 @@ app.post('/payment-link/:id', async (req, res) => {
       apiBase: process.env.TUMIPAY_BASE,
       username: process.env.TUMIPAY_USER,
       password: process.env.TUMIPAY_PASS
-    });
+  };
+  console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
+  const { link } = await createTumipayPayment(payload);
     res.json({ link, cuota, total });
   } catch (e) {
     console.error('[web] /payment-link error:', e?.message || e);

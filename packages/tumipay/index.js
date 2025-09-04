@@ -41,10 +41,13 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
   for (const ep of endpoints) {
     try {
       const url = String(base).replace(/\/$/,'') + ep.path;
-      const r = await f(url, { method: 'POST', headers, body: JSON.stringify(ep.body(payload)) });
-      const d = await r.json().catch(()=>({}));
-      if (!r.ok) continue;
-      const link = ep.pick(d);
+  const r = await f(url, { method: 'POST', headers, body: JSON.stringify(ep.body(payload)) });
+  // Si hay redirección, usar Location
+  const loc = r.headers && (r.headers.get ? r.headers.get('location') : (r.headers.Location || r.headers.location));
+  if (loc) return { link: loc };
+  const d = await r.json().catch(()=>({}));
+  if (!r.ok) continue;
+  const link = ep.pick(d);
       if (link) return { link };
     } catch {}
   }
