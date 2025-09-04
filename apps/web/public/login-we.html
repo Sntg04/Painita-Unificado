@@ -11,24 +11,166 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --primary:#B00020; }
-    body { font-family: 'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; margin:0; background:#fff; color:#111; }
-    .center { min-height:100dvh; display:grid; place-items:center; padding:20px; }
-    .card { width:min(460px, 96vw); border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:20px; box-shadow: 0 6px 30px rgba(0,0,0,0.06); }
-    h1 { margin:0 0 6px 0; font-size:1.6rem; color:#111; }
-    p  { margin:0 0 14px 0; color:#444; }
-    .input { width:100%; padding:10px 12px; border:1px solid #d5d5d5; border-radius:10px; font-size:1rem; }
-    .btn { width:100%; padding:10px 12px; border-radius:10px; border:0; cursor:pointer; font-weight:800; background:var(--primary); color:#fff; }
-    .error { color:#b00020; margin-top:10px; }
-    a { color: var(--primary); text-decoration: none; }
+    :root { --primary:#B00020; --white:#fff; --black:#000; --topbar-h: 64px; }
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Nunito', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; 
+      margin:0; 
+      background:#fff; 
+      color:#111; 
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Barra superior igual que en la página principal */
+    .topbar { 
+      position: sticky; 
+      top: 0; 
+      width: 100%; 
+      background: var(--primary); 
+      border-bottom: none; 
+      padding: 14px 20px; 
+      z-index: 2; 
+      display: flex; 
+      align-items: center; 
+      gap: 16px; 
+      justify-content: flex-start; 
+      min-height: var(--topbar-h); 
+    }
+    .topbar__brand { 
+      color: var(--white); 
+      font-weight: 800; 
+      font-family: 'Playfair Display', serif; 
+      font-size: 1.75rem; 
+      letter-spacing: 0.6px; 
+      text-decoration: none; 
+      cursor: pointer; 
+    }
+    
+    /* Contenido principal */
+    .main-content { 
+      flex: 1; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 40px 20px; 
+      background: linear-gradient(135deg, rgba(176, 0, 32, 0.02) 0%, rgba(176, 0, 32, 0.05) 100%);
+    }
+    
+    .card { 
+      width: min(460px, 96vw); 
+      background: white;
+      border: 1px solid rgba(0,0,0,0.08); 
+      border-radius: 16px; 
+      padding: 32px; 
+      box-shadow: 0 12px 48px rgba(176, 0, 32, 0.12); 
+    }
+    
+    h1 { 
+      margin: 0 0 8px 0; 
+      font-size: 2rem; 
+      color: var(--primary); 
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      text-align: center;
+    }
+    
+    .subtitle { 
+      margin: 0 0 24px 0; 
+      color: #666; 
+      text-align: center;
+      font-size: 1.05rem;
+    }
+    
+    .form-container {
+      display: grid; 
+      gap: 16px;
+    }
+    
+    .input { 
+      width: 100%; 
+      padding: 14px 16px; 
+      border: 2px solid #e5e5e5; 
+      border-radius: 12px; 
+      font-size: 1rem; 
+      font-family: 'Nunito', sans-serif;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(176, 0, 32, 0.1);
+    }
+    
+    .btn { 
+      width: 100%; 
+      padding: 14px 16px; 
+      border-radius: 12px; 
+      border: 0; 
+      cursor: pointer; 
+      font-weight: 800; 
+      font-size: 1.05rem;
+      background: var(--primary); 
+      color: #fff; 
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 8px;
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(176, 0, 32, 0.3);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .error { 
+      color: var(--primary); 
+      margin-top: 12px; 
+      text-align: center;
+      font-weight: 600;
+      min-height: 20px;
+    }
+    
+    .footer-link { 
+      margin-top: 20px; 
+      text-align: center;
+      color: #666;
+    }
+    
+    .footer-link a { 
+      color: var(--primary); 
+      text-decoration: none; 
+      font-weight: 600;
+    }
+    
+    .footer-link a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Decoración SVG como en la página principal */
+    .layout-deco { 
+      position: fixed; 
+      right: 0; 
+      bottom: 0; 
+      pointer-events: none; 
+      z-index: 0; 
+      max-width: 100%; 
+      overflow: hidden; 
+      opacity: 0.6;
+    }
   </style>
   <script>
     async function doLogin(){
       const phone = (document.getElementById('phone').value||'').replace(/\D/g,'').slice(0,10);
       const password = document.getElementById('pass').value;
       const err = document.getElementById('err'); err.textContent='';
-      if (phone.length !== 10) { err.textContent='Ingresa un número válido'; return; }
+      if (phone.length !== 10) { err.textContent='Ingresa un número válido de 10 dígitos'; return; }
       if (!password) { err.textContent='Ingresa tu contraseña'; return; }
       try {
         const r = await fetch('/clientes/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, password }) });
@@ -44,32 +186,48 @@
           try {
             localStorage.setItem('painita_form_id', String(form.id));
             localStorage.setItem('painita_form_step', String(form.paso_actual || 1));
+            localStorage.setItem('painita_login_success', '1'); // Flag to prevent clearing
           } catch {}
         }
         location.href = '/';
       } catch(e) {
-        err.textContent = 'Error de red';
+        err.textContent = 'Error de conexión. Inténtalo de nuevo.';
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('doLogin').addEventListener('click', doLogin);
       document.getElementById('pass').addEventListener('keydown', (e)=>{ if (e.key==='Enter') doLogin(); });
+      document.getElementById('phone').addEventListener('keydown', (e)=>{ if (e.key==='Enter') document.getElementById('pass').focus(); });
     });
   </script>
 </head>
 <body>
-  <div class="center">
+  <!-- Barra superior con logo Painita -->
+  <div class="topbar">
+    <a class="topbar__brand" href="/">Painita</a>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="main-content">
     <div class="card">
       <h1>Inicia sesión</h1>
-      <p>Continúa tu solicitud en el paso donde ibas.</p>
-      <div style="display:grid; gap:10px;">
-        <input id="phone" class="input" placeholder="Celular" maxlength="10" />
+      <p class="subtitle">Continúa tu solicitud en el paso donde ibas</p>
+      <div class="form-container">
+        <input id="phone" class="input" placeholder="Número de celular" maxlength="10" type="tel" />
         <input id="pass" class="input" type="password" placeholder="Contraseña" />
         <button id="doLogin" class="btn">Entrar</button>
         <div id="err" class="error"></div>
       </div>
-      <p style="margin-top:12px;">¿No tienes cuenta? <a href="/">Solicita tu crédito</a></p>
+      <p class="footer-link">¿No tienes cuenta? <a href="/">Solicita tu crédito</a></p>
     </div>
+  </div>
+
+  <!-- Decoración SVG -->
+  <div class="layout-deco">
+    <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="140" cy="140" r="40" fill="#B00020" fill-opacity="0.08" />
+      <circle cx="100" cy="160" r="20" fill="#B00020" fill-opacity="0.12" />
+    </svg>
   </div>
 </body>
 </html>

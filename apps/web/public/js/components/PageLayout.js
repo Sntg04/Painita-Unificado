@@ -6,8 +6,17 @@ export function PageLayout(children) {
   top.className = 'topbar';
   top.innerHTML = `
   <a class="topbar__brand" href="/">Painita</a>
-  <button class="topbar__login" type="button" onclick="window.location.href='/login-we'">Iniciar sesión</button>
+  <button class="topbar__login" type="button">Iniciar sesión</button>
   `;
+  
+  // Add event listener for login button
+  const loginBtn = top.querySelector('.topbar__login');
+  loginBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log('Login button clicked, redirecting to /login-we');
+    window.location.assign('/login-we');
+  });
+  
   root.appendChild(top);
   // Content
   const main = document.createElement('main');

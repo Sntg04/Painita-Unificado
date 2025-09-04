@@ -250,6 +250,12 @@ if (LEGACY_DIR) {
     next();
   });
 } else {
+  // Servir página de login directamente ANTES del catch-all
+  app.get('/login-we', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(__dirname, 'public', 'login-we.html'));
+  });
+  
   app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
@@ -263,9 +269,8 @@ if (LEGACY_DIR) {
     next();
   });
 }
-// Forzar siempre a la página principal
-app.get('/login-we', (req, res) => res.redirect(302, '/'));
-app.get('/mi-solicitud', (req, res) => res.redirect(302, '/'));
+// Backward-compat redirect
+app.get('/mi-solicitud', (req, res) => res.redirect(302, '/login-we'));
 
 // Check if phone exists (proxy to CRM)
 app.get('/phone/exists', async (req, res) => {
