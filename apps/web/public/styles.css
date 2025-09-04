@@ -403,3 +403,81 @@ ul li::marker, ol li::marker { color: var(--marker-color); }
     display: none; /* Hide phone number on very small screens */
   }
 }
+
+/* Botón flotante de WhatsApp */
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background: #25D366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+  z-index: 1000;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-float:active {
+  transform: scale(0.95);
+}
+
+.whatsapp-float svg {
+  width: 32px;
+  height: 32px;
+  fill: white;
+}
+
+/* Animación de pulso sutil */
+.whatsapp-float::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: #25D366;
+  animation: whatsapp-pulse 2s infinite;
+  z-index: -1;
+}
+
+@keyframes whatsapp-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .whatsapp-float {
+    bottom: 16px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+  }
+  
+  .whatsapp-float svg {
+    width: 28px;
+    height: 28px;
+  }
+}

@@ -44,6 +44,7 @@
     import { InstitutionalSection } from './js/components/InstitutionalSection.js';
     import { TestimonialsSection } from './js/components/TestimonialsSection.js';
   import { FooterSection } from './js/components/FooterSection.js';
+  import { WhatsAppFloat } from './js/components/WhatsAppFloat.js';
     import { calcularDesglose } from './js/utils/finanzas.js';
   import { FormStep1 } from './js/components/FormStep1.js';
   import { FormStep2 } from './js/components/FormStep2.js';
@@ -745,6 +746,11 @@
         showLogout: isLoggedIn 
       });
       root.appendChild(page);
+      
+      // Agregar botón flotante de WhatsApp si no existe
+      if (!document.querySelector('.whatsapp-float')) {
+        document.body.appendChild(WhatsAppFloat());
+      }
     }
 
     render();
