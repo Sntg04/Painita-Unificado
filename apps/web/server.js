@@ -384,7 +384,6 @@ app.patch('/form/:id/accept', async (req, res) => {
 app.get('/crm/health', async (req, res) => {
   try {
   const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/health`);
-  paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
     res.status(r.status).json(d);
   } catch (e) {
     res.status(502).json({ error:'bad_gateway', message:'No se pudo contactar al CRM' });
@@ -433,7 +432,9 @@ app.post('/payment-link/:id', async (req, res) => {
       notifyUrl: process.env.TUMIPAY_NOTIFY_URL || `${publicBase}/webhooks/tumipay`,
       paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
   };
-    console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
+  const hasAuth = !!(process.env.TUMIPAY_AUTH || process.env.TUMIPAY_AUTHORIZATION || process.env.TUMIPAY_KEY || process.env.TUMIPAY_TOKEN || (process.env.TUMIPAY_USER && process.env.TUMIPAY_PASS));
+  const hasTokenTop = !!process.env.TUMIPAY_TOKEN_TOP;
+  console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasAuth, hasTokenTop });
   const { link } = await createTumipayPayment(payload);
     res.json({ link, cuota, total });
   } catch (e) {
