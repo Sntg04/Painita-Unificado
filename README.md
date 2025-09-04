@@ -20,6 +20,10 @@ Cómo correr
           - Configura credenciales Tumipay (opcional en dev):
           - $env:TUMIPAY_BASE='https://transactions.topup.com.co/production'
           - $env:TUMIPAY_KEY='TU_TOKEN_O_APIKEY'
+      - # Para PayIn específico
+      - $env:TUMIPAY_AUTH='Bearer TU_TOKEN'  # o el valor exacto requerido
+      - $env:TUMIPAY_TOKEN_TOP='TOKEN_TOP'
+      - $env:TUMIPAY_PAYIN_PATH='/api/v1/payin'
           - # o usuario/clave básicos
           - $env:TUMIPAY_USER='usuario'
           - $env:TUMIPAY_PASS='clave'

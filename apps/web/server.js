@@ -205,7 +205,7 @@ app.get('/adapter.js', (req, res) => {
       const key='painita_solicitud_id';
       const getId=()=>localStorage.getItem(key);
       const setId=(id)=>localStorage.setItem(key,String(id));
-      return {
+  return { 
         start: async ({phone,otp,password})=>{
           const r=await fetch(base+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,otp,password})});
           const d=await r.json(); setId(d.id); return d;
@@ -384,6 +384,7 @@ app.patch('/form/:id/accept', async (req, res) => {
 app.get('/crm/health', async (req, res) => {
   try {
   const { r, d } = await fetchJsonWithTimeout(`${CRM_BASE}/health`);
+  paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
     res.status(r.status).json(d);
   } catch (e) {
     res.status(502).json({ error:'bad_gateway', message:'No se pudo contactar al CRM' });
@@ -403,10 +404,14 @@ app.post('/payment-link/:id', async (req, res) => {
     if (/^\d+$/.test(String(id))) {
       const { d: form } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(id)}`);
       if (form && typeof form === 'object') {
+        const fullPhone = String(form.phone || form.celular || '').replace(/\D/g,'');
+        let phone_code = '57'; let phone_number = fullPhone;
+        if (fullPhone.length > 10) { phone_code = fullPhone.slice(0, fullPhone.length - 10); phone_number = fullPhone.slice(-10); }
         customer = {
           name: [form.first_name, form.last_name].filter(Boolean).join(' ') || undefined,
           email: form.email || undefined,
-          phone: form.phone || form.celular || undefined,
+          phone_code,
+          phone_number,
           document: form.document_number ? ({ type: form.document_type || 'CC', number: String(form.document_number) }) : undefined
         };
       }
@@ -424,7 +429,8 @@ app.post('/payment-link/:id', async (req, res) => {
       customer,
       returnUrl: process.env.TUMIPAY_RETURN_URL || undefined,
       cancelUrl: process.env.TUMIPAY_CANCEL_URL || undefined,
-      notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined
+      notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined,
+      paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
   };
     console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
   const { link } = await createTumipayPayment(payload);
