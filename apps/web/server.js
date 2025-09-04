@@ -433,8 +433,7 @@ app.post('/payment-link/:id', async (req, res) => {
       paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
   };
   const hasAuth = !!(process.env.TUMIPAY_AUTH || process.env.TUMIPAY_AUTHORIZATION || process.env.TUMIPAY_KEY || process.env.TUMIPAY_TOKEN || (process.env.TUMIPAY_USER && process.env.TUMIPAY_PASS));
-  const hasTokenTop = !!process.env.TUMIPAY_TOKEN_TOP;
-  console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasAuth, hasTokenTop });
+  console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasAuth });
   const { link } = await createTumipayPayment(payload);
     res.json({ link, cuota, total });
   } catch (e) {

@@ -42,7 +42,6 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
   const token = apiKey || process.env.TUMIPAY_KEY || process.env.TUMIPAY_TOKEN;
   const user = username || process.env.TUMIPAY_USER;
   const pass = password || process.env.TUMIPAY_PASS;
-  const tokenTop = process.env.TUMIPAY_TOKEN_TOP;
   const authorization = process.env.TUMIPAY_AUTH || process.env.TUMIPAY_AUTHORIZATION;
   const payinPath = process.env.TUMIPAY_PAYIN_PATH || '/api/v1/payin';
 
@@ -61,10 +60,7 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
   if (!headers['Authorization'] && user && pass) {
     headers['Authorization'] = 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
   }
-  if (tokenTop) headers['Token-Top'] = tokenTop;
-
   const hasAuth = !!headers['Authorization'];
-  const hasTokenTop = !!headers['Token-Top'];
 
   const payload = {
     reference: String(id),
@@ -89,9 +85,8 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
   // Try a sequence of endpoints depending on available headers
   const attempts = [];
   // Connect PayIn (requires Token-Top typically)
-  if (hasAuth && hasTokenTop) {
-    attempts.push({ url: joinUrl(base, payinPath), body: payload });
-  }
+  // PayIn path (si tu backend no requiere Token-Top, igual puede funcionar solo con Authorization)
+  if (hasAuth) attempts.push({ url: joinUrl(base, payinPath), body: payload });
   // Connect initiate variants (often accept Authorization only)
   if (hasAuth) {
     attempts.push({ url: joinUrl(base, '/connect/payins/initiate'), body: {
@@ -128,6 +123,6 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
   }
 
   const err = new Error('tumipay_link_failed');
-  err.cause = { attempts: details, headers: { hasAuth, hasTokenTop, hasToken: !!token, hasBasic: !!(user && pass) } };
+  err.cause = { attempts: details, headers: { hasAuth, hasToken: !!token, hasBasic: !!(user && pass) } };
   throw err;
 }
