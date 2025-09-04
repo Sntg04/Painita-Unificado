@@ -205,35 +205,15 @@ app.get('/adapter.js', (req, res) => {
       const key='painita_solicitud_id';
       const getId=()=>localStorage.getItem(key);
       const setId=(id)=>localStorage.setItem(key,String(id));
-      try {
-        // Optional customer and callback info if we have it cached via prior load
-        let customer = undefined;
-        try {
-          // lightweight fetch to enrich customer if formId is numeric
-          if (/^\d+$/.test(String(id))) {
-            const { d: form } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(id)}`);
-            if (form) {
-              customer = {
-                name: [form.first_name, form.last_name].filter(Boolean).join(' ') || undefined,
-                email: form.email || undefined,
-                phone: form.phone || form.celular || undefined,
-                document: (form.document_number ? ({ type: form.document_type || 'CC', number: String(form.document_number) }) : undefined)
-              };
-            }
-          }
-        } catch {}
-        const payload = {
+      return {
+        start: async ({phone,otp,password})=>{
           const r=await fetch(base+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,otp,password})});
           const d=await r.json(); setId(d.id); return d;
         },
         sync: async (stepKey,data,finalFlag)=>{
           const id=getId(); if(!id) throw new Error('no solicitud id');
           const r=await fetch(base+'/sync/'+id+'/step',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({stepKey,data,final:!!finalFlag})});
-          password: process.env.TUMIPAY_PASS,
-          customer,
-          returnUrl: process.env.TUMIPAY_RETURN_URL || undefined,
-          cancelUrl: process.env.TUMIPAY_CANCEL_URL || undefined,
-          notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined
+          return r.json();
         },
         getId
       };
