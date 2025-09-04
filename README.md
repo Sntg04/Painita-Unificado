@@ -17,12 +17,14 @@ Cómo correr
    - PowerShell:
      - cd .\apps\web
      - npm install --no-audit --no-fund
-       - Configura credenciales Tumipay (opcional en dev):
+          - Configura credenciales Tumipay (opcional en dev):
           - $env:TUMIPAY_BASE='https://transactions.topup.com.co/production'
           - $env:TUMIPAY_KEY='TU_TOKEN_O_APIKEY'
           - # o usuario/clave básicos
           - $env:TUMIPAY_USER='usuario'
           - $env:TUMIPAY_PASS='clave'
+             - # Fallback: si la API falla, permitir link mock (solo dev)
+             - $env:TUMIPAY_ALLOW_MOCK_ON_FAIL='1'
        - $env:CRM_BASE='http://localhost:4001'; node server.js
    - Abre http://localhost:4000
 

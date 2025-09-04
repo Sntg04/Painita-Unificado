@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import cors from 'cors';
 import { calcularValorPrestamo } from '@painita/calc';
 import { CRMClient } from '@painita/crm-client';
-import { createTumipayPayment } from '@painita/tumipay';
+import { createTumipayPayment, buildPaymentLink } from '@painita/tumipay';
 import { calcularDesglose } from './public/js/utils/finanzas.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -372,12 +372,12 @@ app.get('/crm/health', async (req, res) => {
 
 // Generar link de pago Tumipay
 app.post('/payment-link/:id', async (req, res) => {
+  const { id } = req.params;
+  const { monto, plazoMeses, tasa, plazoDias } = req.body || {};
+  // Calcular cuota si aplica y total con nuestro desglose
+  const cuota = (monto && plazoMeses && tasa) ? calcularValorPrestamo(monto, plazoMeses, tasa) : null;
+  const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
   try {
-    const { id } = req.params;
-    const { monto, plazoMeses, tasa, plazoDias } = req.body;
-    // Calcular cuota si aplica y total con nuestro desglose
-    const cuota = (monto && plazoMeses && tasa) ? calcularValorPrestamo(monto, plazoMeses, tasa) : null;
-    const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
     const { link } = await createTumipayPayment({
       id,
       amount: total,
@@ -390,6 +390,11 @@ app.post('/payment-link/:id', async (req, res) => {
     res.json({ link, cuota, total });
   } catch (e) {
     console.error('[web] /payment-link error:', e?.message || e);
+    // Fallback opcional para desarrollo si la API falla
+    if ((process.env.TUMIPAY_ALLOW_MOCK_ON_FAIL || '').toLowerCase() === '1' || (process.env.TUMIPAY_ALLOW_MOCK_ON_FAIL || '').toLowerCase() === 'true') {
+      const link = buildPaymentLink({ id, amount: total, installment: cuota || undefined });
+      return res.json({ link, cuota, total, mock: true });
+    }
     res.status(502).json({ error: 'payment_link_failed', message: 'No se pudo generar el link de pago.' });
   }
 });
