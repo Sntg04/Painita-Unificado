@@ -16,6 +16,10 @@
 <body>
   <div id="app"></div>
   <script type="module">
+  // Limpia almacenamiento local y de sesión al iniciar la web
+  try { localStorage.clear(); } catch {}
+  try { sessionStorage.clear(); } catch {}
+
     // Fuerza recarga sin caché cuando se navega hacia atrás o se vuelve a abrir
     window.addEventListener('pageshow', function (event) {
       const perf = performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
@@ -84,16 +88,7 @@
       }
     }
 
-  // Auto-resume from localStorage (when coming from /login-we login)
-    try {
-      const savedFormId = localStorage.getItem('painita_form_id');
-      const savedFormStep = localStorage.getItem('painita_form_step');
-      if (savedFormId) {
-        state.formId = Number(savedFormId);
-        state.formStep = Math.min(7, Math.max(1, parseInt(savedFormStep||'1',10) || 1));
-        state.fase = 'form';
-      }
-    } catch {}
+  // No auto-resume: siempre iniciar en la página principal/calculadora
 
     function savePrefs() {
       try { localStorage.setItem('painita_plazo', String(state.plazo)); localStorage.setItem('painita_monto', String(state.monto)); } catch {}

