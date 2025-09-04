@@ -400,6 +400,7 @@ app.post('/payment-link/:id', async (req, res) => {
   const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
   // Opcional: enriquecer con datos del cliente para Tumipay (si el CRM responde)
   let customer = undefined;
+  const publicBase = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
   try {
     if (/^\d+$/.test(String(id))) {
       const { d: form } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(id)}`);
@@ -427,9 +428,9 @@ app.post('/payment-link/:id', async (req, res) => {
       username: process.env.TUMIPAY_USER,
       password: process.env.TUMIPAY_PASS,
       customer,
-      returnUrl: process.env.TUMIPAY_RETURN_URL || undefined,
-      cancelUrl: process.env.TUMIPAY_CANCEL_URL || undefined,
-      notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined,
+      returnUrl: process.env.TUMIPAY_RETURN_URL || `${publicBase}/pago/exito`,
+      cancelUrl: process.env.TUMIPAY_CANCEL_URL || `${publicBase}/pago/cancelado`,
+      notifyUrl: process.env.TUMIPAY_NOTIFY_URL || `${publicBase}/webhooks/tumipay`,
       paymentMethod: process.env.TUMIPAY_PAYMENT_METHOD || 'ALL_METHODS'
   };
     console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
@@ -445,6 +446,22 @@ app.post('/payment-link/:id', async (req, res) => {
     }
     res.status(502).json({ error: 'payment_link_failed', message: 'No se pudo generar el link de pago.' });
   }
+});
+
+// Success/Cancel pages for payment redirects (basic messages)
+app.get('/pago/exito', (req, res) => {
+  res.type('html').send('<!doctype html><html><body><h3>Pago iniciado correctamente</h3><p>Puedes cerrar esta ventana.</p></body></html>');
+});
+app.get('/pago/cancelado', (req, res) => {
+  res.type('html').send('<!doctype html><html><body><h3>Pago cancelado</h3><p>Puedes volver e intentarlo de nuevo.</p></body></html>');
+});
+
+// Webhook receiver (logs payload)
+app.post('/webhooks/tumipay', express.json(), (req, res) => {
+  try {
+    console.log('[tumipay webhook]', req.body);
+  } catch {}
+  res.status(200).json({ ok: true });
 });
 
 const PORT = process.env.PORT || 4000;
