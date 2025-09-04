@@ -52,6 +52,7 @@
   import { FormStep5 } from './js/components/FormStep5.js';
   import { FormStep6 } from './js/components/FormStep6.js';
   import { FormStep7 } from './js/components/FormStep7.js';
+  import { StatusCard } from './js/components/StatusCard.js';
   import { ensureDataLoaded, getCiudades, isReady as colombiaReady } from './js/utils/colombiaData.js';
   
 
@@ -299,7 +300,13 @@
           };
           retry.addEventListener('click', doStart);
           doStart();
-          const page = PageLayout(sections); document.getElementById('app').appendChild(page); return;
+          
+          // User is logged in at this point
+          const isLoggedIn = !!(state.celular || localStorage.getItem('painita_form_id'));
+          const userPhone = state.celular || '';
+          const page = PageLayout(sections, { userPhone: userPhone, showLogout: isLoggedIn }); 
+          document.getElementById('app').appendChild(page); 
+          return;
         }
         // Si hay formId pero no hay datos cacheados, cárgalos y muestra loader
         if (!state.formData || state.formData.id !== state.formId) {
@@ -313,7 +320,13 @@
           };
           retry.addEventListener('click', doLoad);
           doLoad();
-          const page = PageLayout(sections); document.getElementById('app').appendChild(page); return;
+          
+          // User is logged in at this point  
+          const isLoggedIn = !!(state.celular || localStorage.getItem('painita_form_id'));
+          const userPhone = state.celular || '';
+          const page = PageLayout(sections, { userPhone: userPhone, showLogout: isLoggedIn }); 
+          document.getElementById('app').appendChild(page); 
+          return;
         }
   const card = document.createElement('div'); card.className='card card-center';
   const step = state.formStep;
@@ -497,124 +510,240 @@
   sections.push(FinalStep({ totalPagar: desg.totalPagar, celular: state.celular, solicitudId: state.solicitudId }));
   sections.push(FooterSection());
       } else if (state.fase === 'espera') {
-        const card = document.createElement('div'); card.className='card card-center';
-        const h = document.createElement('h3'); h.className='card__title'; h.textContent = '¡Bienvenido Panita!';
-        const p1 = document.createElement('p'); p1.textContent = 'Tu préstamo está en estado de espera.';
-        const p2 = document.createElement('p'); p2.textContent = 'En un lapso de 10 a 30 minutos puedes volver y conocer tu preaprobado.';
-        const hint = document.createElement('p'); hint.style.color = '#666'; hint.style.fontSize = '0.95rem'; hint.textContent = 'Puedes cerrar esta ventana y regresar más tarde.';
-        card.append(h, p1, p2, hint);
-        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+        const statusCard = StatusCard({
+          title: '¡Bienvenido Panita!',
+          subtitle: 'Tu solicitud está siendo procesada',
+          status: {
+            type: 'info',
+            text: 'En revisión'
+          },
+          icon: '⏳',
+          details: [
+            {
+              type: 'info',
+              text: 'Tu préstamo está en estado de espera. En un lapso de 10 a 30 minutos puedes volver y conocer tu preaprobado.'
+            },
+            {
+              type: 'info', 
+              text: 'Puedes cerrar esta ventana y regresar más tarde. Te notificaremos cuando tengamos una respuesta.'
+            }
+          ]
+        });
+        const center = document.createElement('div'); 
+        center.className='center-screen'; 
+        center.appendChild(statusCard); 
+        sections.push(center);
       } else if (state.fase === 'aprobado') {
-        const card = document.createElement('div'); card.className='card card-center';
-        const h = document.createElement('h3'); h.className='card__title'; h.textContent = 'Tu préstamo ha sido aprobado';
         const f = state.formData || {};
         const monto = Number(f.monto||0);
         const plazo = Number(f.plazo||0);
         const desg = calcularDesglose(monto, plazo);
-        // Calcular fecha de pago sumando días al hoy
-        const due = new Date(); due.setDate(due.getDate() + (plazo||0));
+        const due = new Date(); 
+        due.setDate(due.getDate() + (plazo||0));
         const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
-        // Resumen ordenado (monto, plazo, fecha)
-        const summary = document.createElement('div');
-        summary.style.display = 'grid';
-        summary.style.gridTemplateColumns = '1fr 1fr';
-        summary.style.gap = '8px';
-        const row = (label, value) => {
-          const r = document.createElement('div'); r.className = 'row between';
-          const l = document.createElement('span'); l.textContent = label;
-          const v = document.createElement('strong'); v.textContent = value;
-          r.append(l, v); return r;
-        };
-        summary.append(
-          row('Monto aprobado', desg.monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })),
-          row('Plazo', `${plazo} días`),
-          row('Fecha de pago', dueStr)
-        );
-        // Desglose con el mismo componente visual del home
-        const breakdown = BreakdownPanel({ desglose: desg });
-        const dueP = document.createElement('p'); dueP.textContent = `Fecha de pago: ${dueStr}`;
         const accepted = String(f?.cliente_acepto||'').toLowerCase() === 'si';
-        const infoWrap = document.createElement('div');
-        const errEl = document.createElement('div'); errEl.className='error'; errEl.style.marginTop='8px';
+        
+        const details = [
+          {
+            type: 'summary',
+            title: 'Resumen de tu préstamo',
+            items: [
+              {
+                label: 'Monto aprobado',
+                value: desg.monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })
+              },
+              {
+                label: 'Plazo',
+                value: `${plazo} días`
+              },
+              {
+                label: 'Fecha de pago',
+                value: dueStr
+              }
+            ]
+          }
+        ];
+        
         if (!accepted) {
-          // Botón aceptar: cambia a vista de espera de desembolso
-          const acceptBtn = document.createElement('button'); acceptBtn.className = 'btn btn-primary'; acceptBtn.textContent = 'Aceptar préstamo';
-          acceptBtn.style.marginTop = '12px'; acceptBtn.style.width = '100%';
-          acceptBtn.addEventListener('click', async () => {
-            acceptBtn.disabled = true; errEl.textContent='';
-            try {
-              await fetch(`${API}/form/${state.formId}/accept`, { method: 'PATCH' });
-              // Refrescar datos y mostrar vista persistente
-              try { await loadFormulario(); } catch {}
-              state.formData = Object.assign({}, state.formData, { cliente_acepto: 'si' });
-              render();
-            } catch (e) {
-              acceptBtn.disabled = false;
-              errEl.textContent = 'No se pudo registrar tu aceptación. Intenta de nuevo.';
+          details.push({
+            type: 'info',
+            text: 'Para continuar con el proceso de desembolso, necesitas aceptar formalmente el préstamo con las condiciones mostradas.'
+          });
+        } else {
+          details.push({
+            type: 'info', 
+            text: 'Estamos preparando tu desembolso. En 5 a 10 minutos tendrás el dinero en tu cuenta. Gracias por elegir Painita.'
+          });
+          details.push({
+            type: 'info',
+            text: 'Puedes permanecer en esta página. Actualizaremos automáticamente cuando el estado cambie.'
+          });
+        }
+        
+        const actions = [];
+        const errEl = document.createElement('div'); 
+        errEl.className='error'; 
+        errEl.style.marginTop='8px';
+        
+        if (!accepted) {
+          actions.push({
+            type: 'primary',
+            text: 'Aceptar préstamo',
+            onClick: async (e) => {
+              e.target.disabled = true; 
+              errEl.textContent='';
+              try {
+                await fetch(`${API}/form/${state.formId}/accept`, { method: 'PATCH' });
+                try { await loadFormulario(); } catch {}
+                state.formData = Object.assign({}, state.formData, { cliente_acepto: 'si' });
+                render();
+              } catch (error) {
+                e.target.disabled = false;
+                errEl.textContent = 'No se pudo registrar tu aceptación. Intenta de nuevo.';
+              }
             }
           });
-          card.append(h, summary, breakdown, dueP, acceptBtn, errEl);
         } else {
-          // Vista persistente de aceptación mientras cambia el estado
-          const waitMsg = document.createElement('p');
-          waitMsg.textContent = 'Estamos preparando tu desembolso. En 5 a 10 minutos tendrás el dinero en tu cuenta. Gracias por elegir Painita.';
-          waitMsg.style.marginTop = '8px';
-          // Indicador sencillo
-          const spinner = document.createElement('div');
-          spinner.textContent = 'Procesando…';
-          spinner.style.opacity = '0.8'; spinner.style.fontSize = '0.95rem';
-          const hint = document.createElement('p');
-          hint.textContent = 'Puedes permanecer en esta página. Actualizaremos automáticamente cuando el estado cambie.';
-          hint.style.color = '#666'; hint.style.fontSize = '0.9rem';
-          infoWrap.append(waitMsg, spinner, hint);
-          // Iniciar sondeo de estado hasta que deje de ser aprobado
           startEstadoPolling();
-          card.append(h, summary, breakdown, dueP, infoWrap);
         }
-        // Si salimos de esta fase, detener polling
-        setTimeout(() => { if (state.fase !== 'aprobado') stopEstadoPolling(); }, 0);
-        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
-      } else if (state.fase === 'desembolsado') {
-        const card = document.createElement('div'); card.className='card card-center';
-        const h = document.createElement('h3'); h.className='card__title'; h.textContent = 'Tu crédito ha sido desembolsado';
-        const f = state.formData || {};
-        const monto = Number(f.monto||0);
-        const plazo = Number(f.plazo||0);
-        const desg = calcularDesglose(monto, plazo);
-        // Fecha de pago
-        const due = new Date(); due.setDate(due.getDate() + (plazo||0));
-        const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
-        // Resumen
-        const summary = document.createElement('div');
-        summary.style.display = 'grid'; summary.style.gridTemplateColumns = '1fr 1fr'; summary.style.gap = '8px';
-        const row = (label, value) => { const r = document.createElement('div'); r.className='row between'; const l=document.createElement('span'); l.textContent=label; const v=document.createElement('strong'); v.textContent=value; r.append(l,v); return r; };
-        summary.append(
-          row('Monto desembolsado', monto.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })),
-          row('Plazo', `${plazo} días`),
-          row('Fecha de pago', dueStr)
-        );
-        const breakdown = BreakdownPanel({ desglose: desg });
-        const total = document.createElement('p'); total.style.fontWeight='800'; total.textContent = `Total a pagar: ${desg.totalPagar.toLocaleString('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 })}`;
-        // Botón Tumipay
-        const payBtn = document.createElement('button'); payBtn.className='btn btn-primary'; payBtn.textContent='Pagar'; payBtn.style.width='100%'; payBtn.style.marginTop='12px';
-  const linkWrap = document.createElement('div'); linkWrap.style.marginTop='8px'; const linkA = document.createElement('a'); linkA.target='_blank'; linkA.rel='noopener'; linkWrap.append('Link de pago: ', linkA);
-  const errEl = document.createElement('div'); errEl.className='error'; errEl.style.marginTop='8px';
-        payBtn.addEventListener('click', async ()=>{
-          const refId = state.solicitudId || state.formId;
-          if (!refId) { alert('No hay solicitud'); return; }
-          try {
-            const body = { monto: Math.round(desg.totalPagar), plazoDias: plazo };
-            const r = await fetch(`${API}/payment-link/${refId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-            const d = await r.json();
-            if (d && d.link) { linkA.href = d.link; linkA.textContent = d.link; errEl.textContent=''; }
-            else { errEl.textContent = 'No se pudo generar el link de pago.'; }
-          } catch (e) { errEl.textContent = 'No se pudo generar el link de pago.'; }
+        
+        const statusCard = StatusCard({
+          title: 'Tu préstamo ha sido aprobado',
+          subtitle: accepted ? 'Preparando desembolso...' : 'Esperando tu aceptación',
+          status: {
+            type: accepted ? 'success' : 'warning',
+            text: accepted ? 'Procesando' : 'Pendiente aceptación'
+          },
+          icon: '✅',
+          details: details,
+          breakdown: BreakdownPanel({ desglose: desg }),
+          actions: actions
         });
-        card.append(h, summary, breakdown, total, payBtn, linkWrap, errEl);
-        const center = document.createElement('div'); center.className='center-screen'; center.appendChild(card); sections.push(center);
+        
+        if (!accepted) {
+          statusCard.appendChild(errEl);
+        }
+        
+        const center = document.createElement('div'); 
+        center.className='center-screen'; 
+        center.appendChild(statusCard); 
+        sections.push(center);
+        setTimeout(() => { if (state.fase !== 'aprobado') stopEstadoPolling(); }, 0);
+      } else if (state.fase === 'desembolsado') {
+        const f = state.formData || {};
+        const monto = Number(f.monto || 0);
+        const plazo = Number(f.plazo || 0);
+        const desg = calcularDesglose(monto, plazo);
+        const due = new Date();
+        due.setDate(due.getDate() + (plazo || 0));
+        const dueStr = due.toLocaleDateString('es-CO', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        
+        const details = [
+          {
+            type: 'summary',
+            title: 'Detalles del crédito',
+            items: [
+              {
+                label: 'Monto desembolsado',
+                value: monto.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+              },
+              {
+                label: 'Plazo',
+                value: `${plazo} días`
+              },
+              {
+                label: 'Fecha de pago',
+                value: dueStr
+              },
+              {
+                label: 'Total a pagar',
+                value: desg.totalPagar.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+              }
+            ]
+          },
+          {
+            type: 'info',
+            text: 'El dinero ya está disponible en tu cuenta bancaria. Puedes realizar el pago de tu crédito usando el botón de abajo.'
+          }
+        ];
+        
+        const linkWrap = document.createElement('div');
+        linkWrap.style.marginTop = '8px';
+        const linkA = document.createElement('a');
+        linkA.target = '_blank';
+        linkA.rel = 'noopener';
+        linkWrap.append('Link de pago: ', linkA);
+        
+        const errEl = document.createElement('div');
+        errEl.className = 'error';
+        errEl.style.marginTop = '8px';
+        
+        const actions = [
+          {
+            type: 'primary',
+            text: 'Generar link de pago',
+            onClick: async (e) => {
+              const refId = state.solicitudId || state.formId;
+              if (!refId) {
+                alert('No hay solicitud');
+                return;
+              }
+              try {
+                const body = { monto: Math.round(desg.totalPagar), plazoDias: plazo };
+                const r = await fetch(`${API}/payment-link/${refId}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body)
+                });
+                const d = await r.json();
+                if (d && d.link) {
+                  linkA.href = d.link;
+                  linkA.textContent = d.link;
+                  errEl.textContent = '';
+                } else {
+                  errEl.textContent = 'No se pudo generar el link de pago.';
+                }
+              } catch (e) {
+                errEl.textContent = 'No se pudo generar el link de pago.';
+              }
+            }
+          }
+        ];
+        
+        const statusCard = StatusCard({
+          title: 'Tu crédito ha sido desembolsado',
+          subtitle: 'El dinero está disponible en tu cuenta',
+          status: {
+            type: 'success',
+            text: 'Desembolsado'
+          },
+          icon: '💰',
+          details: details,
+          breakdown: BreakdownPanel({ desglose: desg }),
+          actions: actions
+        });
+        
+        statusCard.appendChild(linkWrap);
+        statusCard.appendChild(errEl);
+        
+        const center = document.createElement('div');
+        center.className = 'center-screen';
+        center.appendChild(statusCard);
+        sections.push(center);
       }
 
-      const page = PageLayout(sections);
+      // Determine if user is logged in for header
+      const isLoggedIn = !!(state.celular || localStorage.getItem('painita_form_id'));
+      const userPhone = state.celular || '';
+      
+      const page = PageLayout(sections, { 
+        userPhone: userPhone, 
+        showLogout: isLoggedIn 
+      });
       root.appendChild(page);
     }
 

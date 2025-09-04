@@ -1,21 +1,59 @@
-export function PageLayout(children) {
+export function PageLayout(children, { userPhone = '', showLogout = false } = {}) {
   const root = document.createElement('div');
   root.className = 'layout-root';
-  // Top bar simple
+  
+  // Top bar with conditional button
   const top = document.createElement('div');
   top.className = 'topbar';
-  top.innerHTML = `
-  <a class="topbar__brand" href="/">Painita</a>
-  <button class="topbar__login" type="button">Iniciar sesión</button>
-  `;
   
-  // Add event listener for login button
-  const loginBtn = top.querySelector('.topbar__login');
-  loginBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    console.log('Login button clicked, redirecting to /login-we');
-    window.location.assign('/login-we');
-  });
+  // Determine what button to show
+  const isLoggedIn = showLogout || !!userPhone;
+  
+  if (isLoggedIn) {
+    // User is logged in - show logout button and phone
+    const phoneDisplay = userPhone ? `(${userPhone})` : '';
+    top.innerHTML = `
+      <a class="topbar__brand" href="/">Painita</a>
+      <div class="topbar__user">
+        <span class="topbar__phone">${phoneDisplay}</span>
+        <button class="topbar__logout" type="button">Cerrar sesión</button>
+      </div>
+    `;
+    
+    // Add logout functionality
+    const logoutBtn = top.querySelector('.topbar__logout');
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Logout button clicked');
+      
+      // Clear all session data
+      try {
+        localStorage.removeItem('painita_form_id');
+        localStorage.removeItem('painita_form_step');
+        localStorage.removeItem('painita_login_success');
+        sessionStorage.clear();
+      } catch (e) {
+        console.error('Error clearing storage:', e);
+      }
+      
+      // Redirect to home page
+      window.location.href = '/';
+    });
+  } else {
+    // User is not logged in - show login button
+    top.innerHTML = `
+      <a class="topbar__brand" href="/">Painita</a>
+      <button class="topbar__login" type="button">Iniciar sesión</button>
+    `;
+    
+    // Add login functionality
+    const loginBtn = top.querySelector('.topbar__login');
+    loginBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Login button clicked, redirecting to /login-we');
+      window.location.assign('/login-we');
+    });
+  }
   
   root.appendChild(top);
   // Content
