@@ -205,15 +205,35 @@ app.get('/adapter.js', (req, res) => {
       const key='painita_solicitud_id';
       const getId=()=>localStorage.getItem(key);
       const setId=(id)=>localStorage.setItem(key,String(id));
-      return {
-        start: async ({phone,otp,password})=>{
+      try {
+        // Optional customer and callback info if we have it cached via prior load
+        let customer = undefined;
+        try {
+          // lightweight fetch to enrich customer if formId is numeric
+          if (/^\d+$/.test(String(id))) {
+            const { d: form } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(id)}`);
+            if (form) {
+              customer = {
+                name: [form.first_name, form.last_name].filter(Boolean).join(' ') || undefined,
+                email: form.email || undefined,
+                phone: form.phone || form.celular || undefined,
+                document: (form.document_number ? ({ type: form.document_type || 'CC', number: String(form.document_number) }) : undefined)
+              };
+            }
+          }
+        } catch {}
+        const payload = {
           const r=await fetch(base+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,otp,password})});
           const d=await r.json(); setId(d.id); return d;
         },
         sync: async (stepKey,data,finalFlag)=>{
           const id=getId(); if(!id) throw new Error('no solicitud id');
           const r=await fetch(base+'/sync/'+id+'/step',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({stepKey,data,final:!!finalFlag})});
-          return r.json();
+          password: process.env.TUMIPAY_PASS,
+          customer,
+          returnUrl: process.env.TUMIPAY_RETURN_URL || undefined,
+          cancelUrl: process.env.TUMIPAY_CANCEL_URL || undefined,
+          notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined
         },
         getId
       };
@@ -397,21 +417,41 @@ app.post('/payment-link/:id', async (req, res) => {
   // Calcular cuota si aplica y total con nuestro desglose
   const cuota = (monto && plazoMeses && tasa) ? calcularValorPrestamo(monto, plazoMeses, tasa) : null;
   const total = (()=>{ try { const d = calcularDesglose(Number(monto||0), Number(plazoDias||0)); return Math.round(d.totalPagar); } catch { return Math.round(Number(monto||0)); } })();
+  // Opcional: enriquecer con datos del cliente para Tumipay (si el CRM responde)
+  let customer = undefined;
   try {
-  const payload = {
+    if (/^\d+$/.test(String(id))) {
+      const { d: form } = await fetchJsonWithTimeout(`${CRM_BASE}/formularios/${encodeURIComponent(id)}`);
+      if (form && typeof form === 'object') {
+        customer = {
+          name: [form.first_name, form.last_name].filter(Boolean).join(' ') || undefined,
+          email: form.email || undefined,
+          phone: form.phone || form.celular || undefined,
+          document: form.document_number ? ({ type: form.document_type || 'CC', number: String(form.document_number) }) : undefined
+        };
+      }
+    }
+  } catch {}
+  try {
+    const payload = {
       id,
       amount: total,
       installment: cuota || undefined,
       apiKey: process.env.TUMIPAY_KEY,
       apiBase: process.env.TUMIPAY_BASE,
       username: process.env.TUMIPAY_USER,
-      password: process.env.TUMIPAY_PASS
+      password: process.env.TUMIPAY_PASS,
+      customer,
+      returnUrl: process.env.TUMIPAY_RETURN_URL || undefined,
+      cancelUrl: process.env.TUMIPAY_CANCEL_URL || undefined,
+      notifyUrl: process.env.TUMIPAY_NOTIFY_URL || undefined
   };
-  console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
+    console.log('[web] creating payment link', { id, total, base: payload.apiBase, hasToken: !!payload.apiKey, hasBasic: !!(payload.username && payload.password) });
   const { link } = await createTumipayPayment(payload);
     res.json({ link, cuota, total });
   } catch (e) {
-    console.error('[web] /payment-link error:', e?.message || e);
+    const cause = e && (e.cause || e.reason);
+    console.error('[web] /payment-link error:', e?.message || e, cause ? ('→ cause: ' + (cause.message || JSON.stringify(cause))) : '');
     // Fallback opcional para desarrollo si la API falla
     if ((process.env.TUMIPAY_ALLOW_MOCK_ON_FAIL || '').toLowerCase() === '1' || (process.env.TUMIPAY_ALLOW_MOCK_ON_FAIL || '').toLowerCase() === 'true') {
       const link = buildPaymentLink({ id, amount: total, installment: cuota || undefined });
