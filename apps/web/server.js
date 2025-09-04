@@ -15,9 +15,29 @@ import twilio from 'twilio';
 const app = express();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 app.use(cors());
+// Global no-cache headers to avoid stale content for clients
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
 // Allow larger JSON bodies for image data URLs from form step 6
 app.use(bodyParser.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files with no-cache for HTML
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res, filePath) => {
+    if (filePath && /\.html$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
+    }
+  }
+}));
 // Avoid favicon 404 noise
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 

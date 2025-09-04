@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <title>Painita</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +16,14 @@
 <body>
   <div id="app"></div>
   <script type="module">
+    // Fuerza recarga sin caché cuando se navega hacia atrás o se vuelve a abrir
+    window.addEventListener('pageshow', function (event) {
+      const perf = performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+      const persisted = event.persisted || (perf && perf.type === 'back_forward');
+      if (persisted) {
+        try { window.location.reload(true); } catch { window.location.reload(); }
+      }
+    });
     import { PageLayout } from './js/components/PageLayout.js';
     import { HeroHeading } from './js/components/HeroHeading.js';
     import { CalculatorPanel } from './js/components/CalculatorPanel.js';

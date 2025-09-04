@@ -20,11 +20,19 @@ export async function createTumipayPayment({ id, amount, installment, apiKey, ap
 
   const f = await getFetch();
   const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Some Tumipay deployments expect Bearer, others X-Api-Key
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    headers['X-Api-Key'] = token;
+  }
   else if (user && pass) headers['Authorization'] = 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
 
   // Candidate endpoints and response parsers
   const endpoints = [
+    // Initiate a Pay-In (as per docs): often returns redirect/payment URL
+    { path: '/payins/initiate', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', channel: 'LINK' }), pick: (d)=> d?.redirectUrl || d?.redirect_url || d?.data?.redirectUrl || d?.data?.redirect_url || d?.paymentUrl || d?.payment_url || d?.url },
+    { path: '/connect/payins/initiate', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', channel: 'LINK' }), pick: (d)=> d?.redirectUrl || d?.redirect_url || d?.data?.redirectUrl || d?.data?.redirect_url || d?.paymentUrl || d?.payment_url || d?.url },
+    { path: '/api/payins/initiate', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', channel: 'LINK' }), pick: (d)=> d?.redirectUrl || d?.redirect_url || d?.data?.redirectUrl || d?.data?.redirect_url || d?.paymentUrl || d?.payment_url || d?.url },
     { path: '/payment-links', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', description: 'Pago préstamo Painita', metadata: { installment: p.installment } }), pick: (d)=> d?.link || d?.url || d?.payment_url },
     { path: '/transactions/payment-link', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', description: 'Pago préstamo Painita', channel: 'LINK' }), pick: (d)=> d?.data?.link || d?.data?.url || d?.link },
     { path: '/create-payment-link', body: (p)=>({ reference: p.id, amount: p.amount, currency: 'COP', description: 'Pago préstamo Painita' }), pick: (d)=> d?.link }
