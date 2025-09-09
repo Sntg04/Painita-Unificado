@@ -190,12 +190,24 @@
       const parts = [x.first_name, x.second_name, x.last_name, x.second_last_name].filter(Boolean);
       return parts.join(' ') || '(sin nombre)';
     }
+    // --- PAGINACIÓN PARA FORMULARIOS ---
+    let formulariosPage = 1;
+    let formulariosPageSize = 50;
+    let formulariosList = [];
     function renderFormularios(list) {
-      const tb = document.querySelector('#tForms tbody'); tb.innerHTML='';
-      list.forEach(x => {
+      formulariosList = list || [];
+      const tb = document.querySelector('#tForms tbody');
+      tb.innerHTML = '';
+      const total = formulariosList.length;
+      const pageSize = formulariosPageSize;
+      const page = formulariosPage;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const start = (page - 1) * pageSize;
+      const end = Math.min(start + pageSize, total);
+      formulariosList.slice(start, end).forEach(x => {
         const tr = document.createElement('tr');
         const estado = (String(x.estado||'pendiente').toLowerCase() === 'rechazado') ? 'negado' : (x.estado || 'pendiente');
-  const options = ['pendiente','en_espera','aprobado','desembolsado','negado']
+        const options = ['pendiente','en_espera','aprobado','desembolsado','negado']
           .map(o => `<option ${o===estado?'selected':''} value="${o}">${o}</option>`).join('');
         tr.innerHTML = `<td>${x.id}</td>
           <td>${fullName(x)}</td>
@@ -205,6 +217,65 @@
           <td><button class="btn" data-action="viewf" data-id="${x.id}">Ver más</button></td>`;
         tb.appendChild(tr);
       });
+      renderFormulariosPagination(total, page, totalPages);
+    }
+
+    function renderFormulariosPagination(total, page, totalPages) {
+      let pag = document.getElementById('formularios-pagination');
+      if (!pag) {
+        pag = document.createElement('div');
+        pag.id = 'formularios-pagination';
+        pag.style.display = 'flex';
+        pag.style.justifyContent = 'space-between';
+        pag.style.alignItems = 'center';
+        pag.style.margin = '12px 0 0 0';
+        pag.style.gap = '12px';
+        const table = document.getElementById('tForms');
+        table.parentNode.appendChild(pag);
+      }
+      pag.innerHTML = '';
+      // Page size selector
+      const sizeSel = document.createElement('select');
+      sizeSel.innerHTML = `<option value="50">50 por página</option><option value="100">100 por página</option>`;
+      sizeSel.value = String(formulariosPageSize);
+      sizeSel.className = 'input';
+      sizeSel.style.width = 'auto';
+      sizeSel.addEventListener('change', e => {
+        formulariosPageSize = parseInt(sizeSel.value, 10) || 50;
+        formulariosPage = 1;
+        renderFormularios(formulariosList);
+      });
+      pag.appendChild(sizeSel);
+      // Pagination controls
+      const nav = document.createElement('div');
+      nav.style.display = 'flex';
+      nav.style.gap = '6px';
+      const prev = document.createElement('button');
+      prev.textContent = 'Anterior';
+      prev.className = 'btn';
+      prev.disabled = page <= 1;
+      prev.addEventListener('click', () => {
+        if (formulariosPage > 1) {
+          formulariosPage--;
+          renderFormularios(formulariosList);
+        }
+      });
+      nav.appendChild(prev);
+      const pageInfo = document.createElement('span');
+      pageInfo.textContent = `Página ${page} de ${totalPages} (${total} formularios)`;
+      nav.appendChild(pageInfo);
+      const next = document.createElement('button');
+      next.textContent = 'Siguiente';
+      next.className = 'btn';
+      next.disabled = page >= totalPages;
+      next.addEventListener('click', () => {
+        if (formulariosPage < totalPages) {
+          formulariosPage++;
+          renderFormularios(formulariosList);
+        }
+      });
+      nav.appendChild(next);
+      pag.appendChild(nav);
     }
     async function loadData() {
       try {
