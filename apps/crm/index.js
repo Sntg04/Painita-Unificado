@@ -220,10 +220,11 @@ app.get('/__up', (req, res) => res.json({ ok: true }));
 // Admin data for quick inspection
 app.get('/admin/data', requireAdmin, async (req, res) => {
   try {
+    // Traer todos los formularios sin límite
     const [counts, clientes, forms, usuarios] = await Promise.all([
       getCounts(),
       recentClientes(50),
-      recentFormularios(50),
+      recentFormularios(1000000), // valor alto para traer todos
       listUsuarios(50)
     ]);
     res.json({ ok:true, counts, clientes, formularios: forms, usuarios });
