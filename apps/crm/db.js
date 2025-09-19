@@ -514,7 +514,7 @@ export async function recentFormularios(limit = 20) {
     arr.sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
     return arr.slice(0, lim);
   }
-  const { rows } = await pool.query('select id, celular, monto, plazo, paso_actual, estado, cliente_acepto, created_at, first_name, second_name, last_name, second_last_name from formularios order by id desc limit $1', [lim]);
+  const { rows } = await pool.query('select id, celular, monto, plazo, paso_actual, estado, cliente_acepto, created_at, first_name, second_name, last_name, second_last_name, date_disbursement from formularios order by id desc limit $1', [lim]);
   return rows;
 }
 

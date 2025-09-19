@@ -539,7 +539,9 @@
         const monto = Number(f.monto||0);
         const plazo = Number(f.plazo||0);
         const desg = calcularDesglose(monto, plazo);
-        const due = new Date(); 
+        const disbursement = new Date(f.date_disbursement); // row.date_disbursement = campo de la BD
+        const due = new Date(disbursement);
+       // const due = new Date(); 
         due.setDate(due.getDate() + (plazo||0));
         const dueStr = due.toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' });
         const accepted = String(f?.cliente_acepto||'').toLowerCase() === 'si';
