@@ -485,7 +485,7 @@ export async function deleteFormularioAdmin(id) {
 
 // Recent lists for quick admin view
 export async function recentClientes(limit = 20) {
-  const lim = Math.max(1, Math.min(200, Number(limit)||20));
+  const lim = Math.max(1, Math.min(1000, Number(limit)||20));
   if (!usePg) {
     const db = readFileDB();
     const map = new Map();
@@ -503,7 +503,7 @@ export async function recentClientes(limit = 20) {
 }
 
 export async function recentFormularios(limit = 20) {
-  const lim = Math.max(1, Math.min(200, Number(limit)||20));
+  const lim = Math.max(1, Math.min(1000, Number(limit)||20));
   if (!usePg) {
     const db = readFileDB();
     const arr = [];
@@ -520,7 +520,7 @@ export async function recentFormularios(limit = 20) {
 
 // Listar usuarios (staff) para Admin
 export async function listUsuarios(limit = 50) {
-  const lim = Math.max(1, Math.min(200, Number(limit)||50));
+  const lim = Math.max(1, Math.min(1000, Number(limit)||50));
   if (!usePg) {
     const db = readFileDB();
     const arr = (db.usuarios || []).slice().sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
